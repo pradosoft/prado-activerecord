@@ -80,6 +80,14 @@
 		"db-oracle": "vendor/bin/phpunit --testsuite db-oracle",
 		"db-ibm": "vendor/bin/phpunit --testsuite db-ibm",
 		"dbtest": "vendor/bin/phpunit --testsuite unit,db-sqlite,db-mysql",
+		"coverage": [
+			"@putenv XDEBUG_MODE=coverage",
+			"vendor/bin/phpunit --testsuite unit,db-sqlite --coverage-text"
+		],
+		"coverage-html": [
+			"@putenv XDEBUG_MODE=coverage",
+			"vendor/bin/phpunit --testsuite unit,db-sqlite --coverage-html build/coverage"
+		],
 		"fulltest": [
 			"find src -name '*.php' | xargs php -l",
 			"vendor/bin/php-cs-fixer fix --dry-run src/",

@@ -246,7 +246,10 @@ abstract class TActiveRecord extends \Prado\TComponent
 	/**
 	 * Magic method for reading properties.
 	 * This method is overriden to provide read access to the foreign objects via
-	 * the key names declared in the RELATIONS array.
+	 * the key names declared in the RELATIONS array. The first read of a relation
+	 * that the class does not declare as a property fetches the foreign objects.
+	 * Later reads return the fetched or assigned value without a query. Relation
+	 * names are case-insensitive, and the value is kept under the declared key.
 	 * @param string $name property name
 	 * @return mixed property value.
 	 * @since 3.1.2
@@ -254,8 +257,11 @@ abstract class TActiveRecord extends \Prado\TComponent
 	public function __get($name)
 	{
 		if ($this->hasRecordRelation($name) && !$this->canGetProperty($name)) {
-			$this->fetchResultsFor($name);
-			return $this->_relationsObjs[$name];
+			$key = $this->getRecordRelation($name)[0];
+			if (!array_key_exists($key, $this->_relationsObjs)) {
+				$this->fetchResultsFor($key);
+			}
+			return $this->_relationsObjs[$key] ?? null;
 		}
 		return parent::__get($name);
 	}
@@ -271,9 +277,41 @@ abstract class TActiveRecord extends \Prado\TComponent
 	public function __set($name, $value)
 	{
 		if ($this->hasRecordRelation($name) && !$this->canSetProperty($name)) {
-			$this->_relationsObjs[$name] = $value;
+			$this->_relationsObjs[$this->getRecordRelation($name)[0]] = $value;
 		} else {
 			parent::__set($name, $value);
+		}
+	}
+
+	/**
+	 * Magic method for checking properties.
+	 * A relation that the class does not declare as a property is set when it is
+	 * fetched or assigned and its value is not null. The check does not fetch it.
+	 * @param string $name property name
+	 * @return bool whether the property is set
+	 * @since 1.0.0 of prado-activerecord
+	 */
+	public function __isset($name)
+	{
+		if ($this->hasRecordRelation($name) && !$this->canGetProperty($name)) {
+			return isset($this->_relationsObjs[$this->getRecordRelation($name)[0]]);
+		}
+		return parent::__isset($name);
+	}
+
+	/**
+	 * Magic method for unsetting properties.
+	 * Unsetting a relation that the class does not declare as a property discards
+	 * its value, so the next read fetches it again.
+	 * @param string $name property name
+	 * @since 1.0.0 of prado-activerecord
+	 */
+	public function __unset($name)
+	{
+		if ($this->hasRecordRelation($name) && !$this->canSetProperty($name)) {
+			unset($this->_relationsObjs[$this->getRecordRelation($name)[0]]);
+		} else {
+			parent::__unset($name);
 		}
 	}
 
@@ -396,6 +434,9 @@ abstract class TActiveRecord extends \Prado\TComponent
 	 * This means that event handlers bound to these finder instances are class wide.
 	 * Create a new instance of the ActiveRecord class if you wish to bound the
 	 * event handlers to object instance.
+	 * A record class that does not override this method gets its own finder from
+	 * `RecordClass::finder()`, because the default class name resolves to the
+	 * called class.
 	 * @template T of TActiveRecord
 	 * @param class-string<T> $className active record class name.
 	 * @return T active record finder instance.
@@ -403,6 +444,9 @@ abstract class TActiveRecord extends \Prado\TComponent
 	public static function finder($className = __CLASS__)
 	{
 		static $finders = [];
+		if ($className === __CLASS__) {
+			$className = static::class;
+		}
 		if (!isset($finders[$className])) {
 			$f = Prado::createComponent($className);
 			$finders[$className] = $f;
@@ -533,13 +577,18 @@ abstract class TActiveRecord extends \Prado\TComponent
 
 	/**
 	 * Populates a new record with the query result.
-	 * This is a wrapper of {@see createRecord}.
+	 * This is a wrapper of {@see createRecord}. The new record uses the connection
+	 * of this finder, so it saves to the database it was read from.
 	 * @param array $data name value pair of record data
 	 * @return TActiveRecord object record, null if data is empty.
 	 */
 	protected function populateObject($data)
 	{
-		return self::createRecord($this::class, $data);
+		$record = self::createRecord($this::class, $data);
+		if ($record !== null) {
+			$record->setDbConnection($this->getDbConnection());
+		}
+		return $record;
 	}
 
 	/**
@@ -849,16 +898,16 @@ abstract class TActiveRecord extends \Prado\TComponent
 	{
 		$delete = false;
 		if (strncasecmp($method, 'with', 4) === 0) {
-			$property = $method[4] === '_' ? substr($method, 5) : substr($method, 4);
+			$property = ($method[4] ?? '') === '_' ? substr($method, 5) : substr($method, 4);
 			return $this->getRelationHandler($property, $args);
 		} elseif ($findOne = strncasecmp($method, 'findby', 6) === 0) {
-			$condition = $method[6] === '_' ? substr($method, 7) : substr($method, 6);
+			$condition = ($method[6] ?? '') === '_' ? substr($method, 7) : substr($method, 6);
 		} elseif (strncasecmp($method, 'findallby', 9) === 0) {
-			$condition = $method[9] === '_' ? substr($method, 10) : substr($method, 9);
+			$condition = ($method[9] ?? '') === '_' ? substr($method, 10) : substr($method, 9);
 		} elseif ($delete = strncasecmp($method, 'deleteby', 8) === 0) {
-			$condition = $method[8] === '_' ? substr($method, 9) : substr($method, 8);
+			$condition = ($method[8] ?? '') === '_' ? substr($method, 9) : substr($method, 8);
 		} elseif ($delete = strncasecmp($method, 'deleteallby', 11) === 0) {
-			$condition = $method[11] === '_' ? substr($method, 12) : substr($method, 11);
+			$condition = ($method[11] ?? '') === '_' ? substr($method, 12) : substr($method, 11);
 		} elseif (strncasecmp($method, 'dy', 2) === 0 || strncasecmp($method, 'fx', 2) === 0) {
 			return parent::__call($method, $args);
 		} else {
@@ -911,6 +960,8 @@ abstract class TActiveRecord extends \Prado\TComponent
 	 * Create a new TSqlCriteria object from a string $criteria. The $args
 	 * are additional parameters and are used in place of the $parameters
 	 * if $parameters is not an array and $args is an arrary.
+	 * A TSqlCriteria object is copied, so the finder methods that set its limit or
+	 * condition leave the caller's object unchanged.
 	 * @param string|TSqlCriteria $criteria sql criteria
 	 * @param mixed $parameters parameters passed by the user.
 	 * @param array $args additional parameters obtained from function_get_args().
@@ -922,7 +973,7 @@ abstract class TActiveRecord extends \Prado\TComponent
 			$useArgs = !is_array($parameters) && is_array($args);
 			return new TActiveRecordCriteria($criteria, $useArgs ? $args : $parameters);
 		} elseif ($criteria instanceof TSqlCriteria) {
-			return $criteria;
+			return clone $criteria;
 		} else {
 			return new TActiveRecordCriteria();
 		}

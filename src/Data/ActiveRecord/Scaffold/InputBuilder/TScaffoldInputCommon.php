@@ -108,6 +108,10 @@ class TScaffoldInputCommon extends TScaffoldInputBase
 		$current = (int) (@date('Y'));
 		$from = $current - 10;
 		$to = $current + 10;
+		if (is_numeric($value)) {
+			$from = min($from, (int) $value);
+			$to = max($to, (int) $value);
+		}
 		for ($i = $from; $i <= $to; $i++) {
 			$years[$i] = $i;
 		}
@@ -123,7 +127,7 @@ class TScaffoldInputCommon extends TScaffoldInputBase
 		$control = $this->createDefaultControl($container, $column, $record);
 		$val = $this->createTypeValidator($container, $column, $record);
 		$val->setDataType(TValidationDataType::Integer);
-		$val->setErrorMessage('Please entery an integer.');
+		$val->setErrorMessage('Please enter an integer.');
 		return $control;
 	}
 
@@ -132,13 +136,13 @@ class TScaffoldInputCommon extends TScaffoldInputBase
 		$control = $this->createDefaultControl($container, $column, $record);
 		$val = $this->createTypeValidator($container, $column, $record);
 		$val->setDataType(TValidationDataType::Float);
-		$val->setErrorMessage('Please entery a decimal number.');
+		$val->setErrorMessage('Please enter a decimal number.');
 		if (($max = $column->getMaxiumNumericConstraint()) !== null) {
 			$val = $this->createRangeValidator($container, $column, $record);
 			$val->setDataType(TValidationDataType::Float);
 			$val->setMaxValue($max);
 			$val->setStrictComparison(true);
-			$val->setErrorMessage('Please entery a decimal number strictly less than ' . $max . '.');
+			$val->setErrorMessage('Please enter a decimal number strictly less than ' . $max . '.');
 		}
 		return $control;
 	}
@@ -273,7 +277,7 @@ class TScaffoldInputCommon extends TScaffoldInputBase
 		$hour = $container->findControl('scaffold_time_hour')->getSelectedValue();
 		$mins = $container->findControl('scaffold_time_min')->getSelectedValue();
 		$secs = $container->findControl('scaffold_time_sec')->getSelectedValue();
-		return "{$date} {$hour}:{$mins}:{$secs}";
+		return $date . ' ' . sprintf('%02d:%02d:%02d', $hour, $mins, $secs);
 	}
 
 	protected function getTimeValue($container, $column, $record)
@@ -281,13 +285,13 @@ class TScaffoldInputCommon extends TScaffoldInputBase
 		$hour = $container->findControl(self::DEFAULT_ID)->getSelectedValue();
 		$mins = $container->findControl('scaffold_time_min')->getSelectedValue();
 		$secs = $container->findControl('scaffold_time_sec')->getSelectedValue();
-		return "{$hour}:{$mins}:{$secs}";
+		return sprintf('%02d:%02d:%02d', $hour, $mins, $secs);
 	}
 
 	protected function createSetControl($container, $column, $record)
 	{
 		$value = $this->getRecordPropertyValue($column, $record);
-		$selectedValues = preg_split('/\s*,\s*/', $value);
+		$selectedValues = preg_split('/\s*,\s*/', (string) $value);
 		$control = new TCheckBoxList();
 		$values = $column->getDbTypeValues();
 		$control->setDataSource($values);
@@ -313,7 +317,7 @@ class TScaffoldInputCommon extends TScaffoldInputBase
 	protected function createEnumControl($container, $column, $record)
 	{
 		$value = $this->getRecordPropertyValue($column, $record);
-		$selectedValues = preg_split('/\s*,\s*/', $value);
+		$selectedValues = preg_split('/\s*,\s*/', (string) $value);
 		$control = new TRadioButtonList();
 		$values = $column->getDbTypeValues();
 		$control->setDataSource($values);
@@ -341,6 +345,7 @@ class TScaffoldInputCommon extends TScaffoldInputBase
 
 	protected function getEnumValue($container, $column, $record)
 	{
-		return $container->findControl(self::DEFAULT_ID)->getSelectedItem()->getText();
+		$item = $container->findControl(self::DEFAULT_ID)->getSelectedItem();
+		return $item !== null ? $item->getText() : null;
 	}
 }
