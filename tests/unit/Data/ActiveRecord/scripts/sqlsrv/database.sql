@@ -9,13 +9,13 @@ CREATE TABLE departments (
   name VARCHAR(255) NOT NULL,
   description VARCHAR(MAX) NULL,
   active BIT NOT NULL DEFAULT 0,
-  sort_order SMALLINT NOT NULL DEFAULT 0,
+  sort_key SMALLINT NOT NULL DEFAULT 0,
   PRIMARY KEY (department_id)
 );
 GO
 
 SET IDENTITY_INSERT departments ON;
-INSERT INTO departments (department_id, name, description, active, sort_order) VALUES
+INSERT INTO departments (department_id, name, description, active, sort_key) VALUES
 (1, 'Facilities', NULL, 0, 1),
 (2, 'Marketing', NULL, 1, 2),
 (3, 'Sales', NULL, 0, 3),
@@ -31,12 +31,12 @@ DROP TABLE IF EXISTS department_sections;
 CREATE TABLE department_sections (
   department_id BIGINT NOT NULL,
   section_id BIGINT NOT NULL,
-  sort_order SMALLINT NOT NULL DEFAULT 0,
+  sort_key SMALLINT NOT NULL DEFAULT 0,
   PRIMARY KEY (department_id, section_id)
 );
 GO
 
-INSERT INTO department_sections (department_id, section_id, sort_order) VALUES
+INSERT INTO department_sections (department_id, section_id, sort_key) VALUES
 (1, 1, 1),
 (1, 2, 2),
 (2, 3, 3),

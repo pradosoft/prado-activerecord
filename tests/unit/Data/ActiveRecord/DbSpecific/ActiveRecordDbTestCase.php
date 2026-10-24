@@ -62,7 +62,10 @@ abstract class ActiveRecordDbTestCase extends \PHPUnit\Framework\TestCase
 	}
 
 	/**
-	 * Driver settings applied to the connection once it is open.
+	 * Driver settings applied to the connection once it is open. A driver trait overrides
+	 * this for settings such as a session format; the column case stays as the driver
+	 * returns it, because the Firebird and DB2 metadata classes read their own result
+	 * rows by upper case keys. The fixture records map upper case column names instead.
 	 * @param TDbConnection $connection the open test connection
 	 */
 	protected function configureConnection(TDbConnection $connection): void

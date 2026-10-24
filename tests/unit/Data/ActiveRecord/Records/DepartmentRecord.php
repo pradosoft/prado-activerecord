@@ -10,9 +10,21 @@ class DepartmentRecord extends TActiveRecord
 	public $name;
 	public $description;
 	public $active;
-	public $sort_order;
+	public $sort_key;
 
 	const TABLE = 'departments';
+
+	/**
+	 * Firebird, Oracle, and IBM DB2 store the fixture's unquoted identifiers in upper case
+	 * and return result columns so; the mapping reaches the lower case properties.
+	 */
+	public static $COLUMN_MAPPING = [
+		'DEPARTMENT_ID' => 'department_id',
+		'NAME' => 'name',
+		'DESCRIPTION' => 'description',
+		'ACTIVE' => 'active',
+		'SORT_KEY' => 'sort_key',
+	];
 
 	public static function finder($className = __CLASS__)
 	{

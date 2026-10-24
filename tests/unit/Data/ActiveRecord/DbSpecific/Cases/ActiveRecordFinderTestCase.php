@@ -27,13 +27,13 @@ abstract class ActiveRecordFinderTestCase extends ActiveRecordDbTestCase
 
 	public function test_find_by_multiple_parameters()
 	{
-		$department = DepartmentRecord::finder()->find('department_id < ? AND sort_order > ?', 5, 2);
+		$department = DepartmentRecord::finder()->find('department_id < ? AND sort_key > ?', 5, 2);
 		$this->assertNotNull($department);
 	}
 
 	public function test_find_by_array_parameter()
 	{
-		$department = DepartmentRecord::finder()->find('department_id < ? AND sort_order > ?', [5, 2]);
+		$department = DepartmentRecord::finder()->find('department_id < ? AND sort_key > ?', [5, 2]);
 		$this->assertNotNull($department);
 	}
 }

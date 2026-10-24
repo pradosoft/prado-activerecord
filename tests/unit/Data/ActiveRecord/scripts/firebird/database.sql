@@ -12,31 +12,31 @@ CREATE TABLE departments (
   name VARCHAR(255) NOT NULL,
   description VARCHAR(1000),
   active BOOLEAN DEFAULT FALSE NOT NULL,
-  sort_order SMALLINT DEFAULT 0 NOT NULL
+  sort_key SMALLINT DEFAULT 0 NOT NULL
 );
 
-INSERT INTO departments (department_id, name, description, active, sort_order) VALUES (1, 'Facilities', NULL, FALSE, 1);
-INSERT INTO departments (department_id, name, description, active, sort_order) VALUES (2, 'Marketing', NULL, TRUE, 2);
-INSERT INTO departments (department_id, name, description, active, sort_order) VALUES (3, 'Sales', NULL, FALSE, 3);
-INSERT INTO departments (department_id, name, description, active, sort_order) VALUES (4, 'Human resources', NULL, TRUE, 4);
-INSERT INTO departments (department_id, name, description, active, sort_order) VALUES (5, '+GX Service', NULL, TRUE, 5);
-INSERT INTO departments (department_id, name, description, active, sort_order) VALUES (6, 'Services', NULL, TRUE, 6);
-INSERT INTO departments (department_id, name, description, active, sort_order) VALUES (7, 'Logistics', NULL, TRUE, 7);
-INSERT INTO departments (department_id, name, description, active, sort_order) VALUES (8, 'Research and Development', NULL, TRUE, 8);
+INSERT INTO departments (department_id, name, description, active, sort_key) VALUES (1, 'Facilities', NULL, FALSE, 1);
+INSERT INTO departments (department_id, name, description, active, sort_key) VALUES (2, 'Marketing', NULL, TRUE, 2);
+INSERT INTO departments (department_id, name, description, active, sort_key) VALUES (3, 'Sales', NULL, FALSE, 3);
+INSERT INTO departments (department_id, name, description, active, sort_key) VALUES (4, 'Human resources', NULL, TRUE, 4);
+INSERT INTO departments (department_id, name, description, active, sort_key) VALUES (5, '+GX Service', NULL, TRUE, 5);
+INSERT INTO departments (department_id, name, description, active, sort_key) VALUES (6, 'Services', NULL, TRUE, 6);
+INSERT INTO departments (department_id, name, description, active, sort_key) VALUES (7, 'Logistics', NULL, TRUE, 7);
+INSERT INTO departments (department_id, name, description, active, sort_key) VALUES (8, 'Research and Development', NULL, TRUE, 8);
 
 DROP TABLE department_sections;
 CREATE TABLE department_sections (
   department_id BIGINT NOT NULL,
   section_id BIGINT NOT NULL,
-  sort_order SMALLINT DEFAULT 0 NOT NULL,
+  sort_key SMALLINT DEFAULT 0 NOT NULL,
   PRIMARY KEY (department_id, section_id)
 );
 
-INSERT INTO department_sections (department_id, section_id, sort_order) VALUES (1, 1, 1);
-INSERT INTO department_sections (department_id, section_id, sort_order) VALUES (1, 2, 2);
-INSERT INTO department_sections (department_id, section_id, sort_order) VALUES (2, 3, 3);
-INSERT INTO department_sections (department_id, section_id, sort_order) VALUES (2, 4, 4);
-INSERT INTO department_sections (department_id, section_id, sort_order) VALUES (2, 5, 5);
+INSERT INTO department_sections (department_id, section_id, sort_key) VALUES (1, 1, 1);
+INSERT INTO department_sections (department_id, section_id, sort_key) VALUES (1, 2, 2);
+INSERT INTO department_sections (department_id, section_id, sort_key) VALUES (2, 3, 3);
+INSERT INTO department_sections (department_id, section_id, sort_key) VALUES (2, 4, 4);
+INSERT INTO department_sections (department_id, section_id, sort_key) VALUES (2, 5, 5);
 
 DROP TABLE simple_users;
 CREATE TABLE simple_users (

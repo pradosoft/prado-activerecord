@@ -1,6 +1,6 @@
 -- ActiveRecord test schema for MySQL and MariaDB.
 -- Loaded into the prado_unitest database by .github/scripts/setup-mysql.sh.
--- Cut from the PRADO framework tests/initdb_mysql.sql, with the `order` columns renamed to `sort_order`
+-- Cut from the PRADO framework tests/initdb_mysql.sql, with the `order` columns renamed to `sort_key`
 -- and `Users` to `users` so the same fixture exists in every dialect: these are the tables the tests under
 -- tests/unit/Data/ActiveRecord/DbSpecific/Mysql read and write. scripts/<driver>/database.sql holds the same tables for the other drivers.
 
@@ -10,14 +10,14 @@ CREATE TABLE `departments` (
   `name` VARCHAR(255) NOT NULL,
   `description` TEXT NULL,
   `active` TINYINT(1) NOT NULL DEFAULT 0,
-  `sort_order` SMALLINT(3) NOT NULL DEFAULT 0,
+  `sort_key` SMALLINT(3) NOT NULL DEFAULT 0,
   PRIMARY KEY (`department_id`)
 )
 AUTO_INCREMENT=1
 ENGINE = INNODB
 CHARACTER SET utf8 COLLATE utf8_general_ci;
 
-INSERT INTO `departments` (`department_id`, `name`, `description`, `active`, `sort_order`) VALUES
+INSERT INTO `departments` (`department_id`, `name`, `description`, `active`, `sort_key`) VALUES
 (1, 'Facilities', NULL, 0, 1),
 (2, 'Marketing', NULL, 1, 2),
 (3, 'Sales', NULL, 0, 3),
@@ -31,14 +31,14 @@ DROP TABLE IF EXISTS `department_sections`;
 CREATE TABLE `department_sections` (
   `department_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `section_id` BIGINT UNSIGNED NOT NULL,
-  `sort_order` SMALLINT(3) NOT NULL DEFAULT 0,
+  `sort_key` SMALLINT(3) NOT NULL DEFAULT 0,
   PRIMARY KEY (`department_id`, `section_id`)
 )
 AUTO_INCREMENT=1
 ENGINE = INNODB
 CHARACTER SET utf8 COLLATE utf8_general_ci;
 
-INSERT INTO `department_sections` (`department_id`, `section_id`, `sort_order`) VALUES
+INSERT INTO `department_sections` (`department_id`, `section_id`, `sort_key`) VALUES
 (1, 1, 1),
 (1, 2, 2),
 (2, 3, 3),

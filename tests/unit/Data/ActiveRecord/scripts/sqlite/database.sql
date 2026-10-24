@@ -8,10 +8,10 @@ CREATE TABLE departments (
   name VARCHAR(255) NOT NULL,
   description TEXT NULL,
   active INTEGER NOT NULL DEFAULT 0,
-  sort_order INTEGER NOT NULL DEFAULT 0
+  sort_key INTEGER NOT NULL DEFAULT 0
 );
 
-INSERT INTO departments (department_id, name, description, active, sort_order) VALUES
+INSERT INTO departments (department_id, name, description, active, sort_key) VALUES
 (1, 'Facilities', NULL, 0, 1),
 (2, 'Marketing', NULL, 1, 2),
 (3, 'Sales', NULL, 0, 3),
@@ -24,11 +24,11 @@ INSERT INTO departments (department_id, name, description, active, sort_order) V
 CREATE TABLE department_sections (
   department_id INTEGER NOT NULL,
   section_id INTEGER NOT NULL,
-  sort_order INTEGER NOT NULL DEFAULT 0,
+  sort_key INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (department_id, section_id)
 );
 
-INSERT INTO department_sections (department_id, section_id, sort_order) VALUES
+INSERT INTO department_sections (department_id, section_id, sort_key) VALUES
 (1, 1, 1),
 (1, 2, 2),
 (2, 3, 3),

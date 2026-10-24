@@ -25,6 +25,26 @@ class UserRecord extends TActiveRecord
 
 	const TABLE = 'users';
 
+	/**
+	 * Firebird, Oracle, and IBM DB2 store the fixture's unquoted identifiers in upper case
+	 * and return result columns so; the mapping reaches the lower case properties.
+	 */
+	public static $COLUMN_MAPPING = [
+		'USERNAME' => 'username',
+		'PASSWORD' => 'password',
+		'EMAIL' => 'email',
+		'FIRST_NAME' => 'first_name',
+		'LAST_NAME' => 'last_name',
+		'JOB_TITLE' => 'job_title',
+		'WORK_PHONE' => 'work_phone',
+		'WORK_FAX' => 'work_fax',
+		'ACTIVE' => 'active',
+		'DEPARTMENT_ID' => 'department_id',
+		'SALUTATION' => 'salutation',
+		'HINT_QUESTION' => 'hint_question',
+		'HINT_ANSWER' => 'hint_answer',
+	];
+
 	public function getLevel()
 	{
 		return $this->_level;

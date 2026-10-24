@@ -10,14 +10,14 @@ abstract class CountRecordsTestCase extends ActiveRecordDbTestCase
 	public function test_count()
 	{
 		$finder = DepartmentRecord::finder();
-		$count = $finder->count('sort_order > ?', 2);
+		$count = $finder->count('sort_key > ?', 2);
 		$this->assertTrue($count > 0);
 	}
 
 	public function test_count_zero()
 	{
 		$finder = DepartmentRecord::finder();
-		$count = $finder->count('sort_order > ?', 11);
+		$count = $finder->count('sort_key > ?', 11);
 		$this->assertEquals($count, 0);
 	}
 

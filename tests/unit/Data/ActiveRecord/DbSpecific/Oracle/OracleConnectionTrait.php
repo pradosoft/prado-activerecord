@@ -2,9 +2,6 @@
 
 namespace Prado\Test\Unit\Data\ActiveRecord\DbSpecific\Oracle;
 
-use Prado\Data\TDbColumnCaseMode;
-use Prado\Data\TDbConnection;
-
 /**
  * Connects the shared cases to the Oracle service named by ORACLE_SERVICE_NAME through PradoUnit::setupOciConnection().
  */
@@ -27,8 +24,4 @@ trait OracleConnectionTrait
 		return ['identity'];
 	}
 
-	protected function configureConnection(TDbConnection $connection): void
-	{
-		$connection->setColumnCase(TDbColumnCaseMode::LowerCase);
-	}
 }

@@ -136,13 +136,13 @@ The extension participates in the host PRADO application through `TActiveRecordC
 | `db-mysql` | `DbSpecific/Mysql`: the database cases over `prado_unitest` | Yes |
 | `db-pgsql`, `db-sqlsrv`, `db-firebird`, `db-oracle`, `db-ibm` | `DbSpecific/<Driver>`: the same cases over PostgreSQL, SQL Server, Firebird, Oracle, IBM DB2 | Yes, one CI job each |
 
-The cases are abstract classes in `DbSpecific/Cases/`; each driver directory subclasses every case and adds its `<Driver>ConnectionTrait` (setup helper, database, connection settings, unsupported features). A case calls `requireFeature()` to skip on a driver that lacks `composite_pk` (SQLite metadata reports only the first key column), `composite_pk_in` (SQL Server, Firebird, DB2), `identity` (Oracle), or `null_parameters` (DB2).
+The cases are abstract classes in `DbSpecific/Cases/`; each driver directory subclasses every case and adds its `<Driver>ConnectionTrait` (setup helper, database, connection settings, unsupported features). A case calls `requireFeature()` to skip on a driver that lacks `composite_pk` (SQLite metadata reports only the first key column), `composite_pk_in` (SQL Server, Firebird, DB2), `identity` (Oracle, Firebird), or `null_parameters` (DB2).
 
 ### Adding a Test
 
 **Pure unit test**: place under `tests/unit/Data/ActiveRecord/` (not in `DbSpecific/`), mirroring the `src/` subdirectory. Extend `PHPUnit\Framework\TestCase` directly.
 
-**Database test**: add it to an abstract case in `DbSpecific/Cases/` (or a new case extending `ActiveRecordDbTestCase`) and give every driver directory a thin subclass. Add missing tables to every `tests/unit/Data/ActiveRecord/scripts/<driver>/database.sql`; `.github/scripts/setup-<driver>.sh` loads that file in CI. Keep identifiers lower case and free of reserved words.
+**Database test**: add it to an abstract case in `DbSpecific/Cases/` (or a new case extending `ActiveRecordDbTestCase`) and give every driver directory a thin subclass. Add missing tables to every `tests/unit/Data/ActiveRecord/scripts/<driver>/database.sql`; `.github/scripts/setup-<driver>.sh` loads that file in CI. Keep identifiers lower case, free of reserved words, and free of the substrings `order`, `from`, `where`, and `select`, which the Oracle limit emulation searches for; add new columns to the record's `$COLUMN_MAPPING`.
 
 **SQLite test**: place in `DbSpecific/Sqlite/`. Give the records a `getDbConnection()` that opens a file under `tests/unit/Data/ActiveRecord/sqlite/`. Keep the test read-only or restore the file afterward; the files are committed.
 

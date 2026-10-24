@@ -13,31 +13,31 @@ CREATE TABLE departments (
   name VARCHAR2(255) NOT NULL,
   description VARCHAR2(1000),
   active NUMBER(1) DEFAULT 0 NOT NULL,
-  sort_order NUMBER(5) DEFAULT 0 NOT NULL
+  sort_key NUMBER(5) DEFAULT 0 NOT NULL
 );
 
-INSERT INTO departments (department_id, name, description, active, sort_order) VALUES (1, 'Facilities', NULL, 0, 1);
-INSERT INTO departments (department_id, name, description, active, sort_order) VALUES (2, 'Marketing', NULL, 1, 2);
-INSERT INTO departments (department_id, name, description, active, sort_order) VALUES (3, 'Sales', NULL, 0, 3);
-INSERT INTO departments (department_id, name, description, active, sort_order) VALUES (4, 'Human resources', NULL, 1, 4);
-INSERT INTO departments (department_id, name, description, active, sort_order) VALUES (5, '+GX Service', NULL, 1, 5);
-INSERT INTO departments (department_id, name, description, active, sort_order) VALUES (6, 'Services', NULL, 1, 6);
-INSERT INTO departments (department_id, name, description, active, sort_order) VALUES (7, 'Logistics', NULL, 1, 7);
-INSERT INTO departments (department_id, name, description, active, sort_order) VALUES (8, 'Research and Development', NULL, 1, 8);
+INSERT INTO departments (department_id, name, description, active, sort_key) VALUES (1, 'Facilities', NULL, 0, 1);
+INSERT INTO departments (department_id, name, description, active, sort_key) VALUES (2, 'Marketing', NULL, 1, 2);
+INSERT INTO departments (department_id, name, description, active, sort_key) VALUES (3, 'Sales', NULL, 0, 3);
+INSERT INTO departments (department_id, name, description, active, sort_key) VALUES (4, 'Human resources', NULL, 1, 4);
+INSERT INTO departments (department_id, name, description, active, sort_key) VALUES (5, '+GX Service', NULL, 1, 5);
+INSERT INTO departments (department_id, name, description, active, sort_key) VALUES (6, 'Services', NULL, 1, 6);
+INSERT INTO departments (department_id, name, description, active, sort_key) VALUES (7, 'Logistics', NULL, 1, 7);
+INSERT INTO departments (department_id, name, description, active, sort_key) VALUES (8, 'Research and Development', NULL, 1, 8);
 
 DROP TABLE IF EXISTS department_sections;
 CREATE TABLE department_sections (
   department_id NUMBER(19) NOT NULL,
   section_id NUMBER(19) NOT NULL,
-  sort_order NUMBER(5) DEFAULT 0 NOT NULL,
+  sort_key NUMBER(5) DEFAULT 0 NOT NULL,
   CONSTRAINT pk_department_sections PRIMARY KEY (department_id, section_id)
 );
 
-INSERT INTO department_sections (department_id, section_id, sort_order) VALUES (1, 1, 1);
-INSERT INTO department_sections (department_id, section_id, sort_order) VALUES (1, 2, 2);
-INSERT INTO department_sections (department_id, section_id, sort_order) VALUES (2, 3, 3);
-INSERT INTO department_sections (department_id, section_id, sort_order) VALUES (2, 4, 4);
-INSERT INTO department_sections (department_id, section_id, sort_order) VALUES (2, 5, 5);
+INSERT INTO department_sections (department_id, section_id, sort_key) VALUES (1, 1, 1);
+INSERT INTO department_sections (department_id, section_id, sort_key) VALUES (1, 2, 2);
+INSERT INTO department_sections (department_id, section_id, sort_key) VALUES (2, 3, 3);
+INSERT INTO department_sections (department_id, section_id, sort_key) VALUES (2, 4, 4);
+INSERT INTO department_sections (department_id, section_id, sort_key) VALUES (2, 5, 5);
 
 DROP TABLE IF EXISTS simple_users;
 CREATE TABLE simple_users (

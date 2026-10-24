@@ -10,11 +10,11 @@ CREATE TABLE departments (
   name VARCHAR(255) NOT NULL,
   description TEXT NULL,
   active BOOLEAN NOT NULL DEFAULT FALSE,
-  sort_order SMALLINT NOT NULL DEFAULT 0,
+  sort_key SMALLINT NOT NULL DEFAULT 0,
   PRIMARY KEY (department_id)
 );
 
-INSERT INTO departments (department_id, name, description, active, sort_order) VALUES
+INSERT INTO departments (department_id, name, description, active, sort_key) VALUES
 (1, 'Facilities', NULL, FALSE, 1),
 (2, 'Marketing', NULL, TRUE, 2),
 (3, 'Sales', NULL, FALSE, 3),
@@ -29,11 +29,11 @@ DROP TABLE IF EXISTS department_sections CASCADE;
 CREATE TABLE department_sections (
   department_id BIGINT NOT NULL,
   section_id BIGINT NOT NULL,
-  sort_order SMALLINT NOT NULL DEFAULT 0,
+  sort_key SMALLINT NOT NULL DEFAULT 0,
   PRIMARY KEY (department_id, section_id)
 );
 
-INSERT INTO department_sections (department_id, section_id, sort_order) VALUES
+INSERT INTO department_sections (department_id, section_id, sort_key) VALUES
 (1, 1, 1),
 (1, 2, 2),
 (2, 3, 3),
