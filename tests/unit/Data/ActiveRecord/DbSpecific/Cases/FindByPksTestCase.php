@@ -25,18 +25,26 @@ abstract class FindByPksTestCase extends ActiveRecordDbTestCase
 	public function test_find_by_pks()
 	{
 		$deps = DepartmentRecord::finder()->findAllByPks(1, 2, 4);
-		$this->assertEquals(count($deps), 3);
-		$this->assertEquals($deps[0]->department_id, 1);
-		$this->assertEquals($deps[1]->department_id, 2);
-		$this->assertEquals($deps[2]->department_id, 4);
+		$this->assertSame([1, 2, 4], $this->departmentIds($deps));
 	}
 
 	public function test_find_by_pks_with_invalid()
 	{
 		$deps = DepartmentRecord::finder()->findAllByPks(4, 2, 14);
-		$this->assertEquals(count($deps), 2);
-		$this->assertEquals($deps[0]->department_id, 2);
-		$this->assertEquals($deps[1]->department_id, 4);
+		$this->assertSame([2, 4], $this->departmentIds($deps));
+	}
+
+	/**
+	 * The query has no ORDER BY, and the row order differs between drivers (DB2 returns
+	 * the rows in the order of the IN list), so the keys are compared sorted.
+	 * @param DepartmentRecord[] $deps
+	 * @return int[] the department ids, ascending
+	 */
+	private function departmentIds(array $deps): array
+	{
+		$ids = array_map(fn ($dep) => (int) $dep->department_id, $deps);
+		sort($ids);
+		return $ids;
 	}
 
 	public function test_find_by_composite_pks()
