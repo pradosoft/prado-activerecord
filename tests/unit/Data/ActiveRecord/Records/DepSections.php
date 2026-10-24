@@ -8,7 +8,7 @@ class DepSections extends TActiveRecord
 {
 	public $department_id;
 	public $section_id;
-	public $order;
+	public $sort_order;
 
 	const TABLE = 'department_sections';
 

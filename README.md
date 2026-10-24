@@ -36,7 +36,7 @@ Any database that PRADO's `Prado\Data` layer supports. The Scaffold input builde
 | Oracle | `oci:` |
 | IBM DB2 | `ibm:` |
 
-The test suite in this repository runs against MySQL and SQLite.
+The database test suites run against SQLite, MySQL, PostgreSQL, Microsoft SQL Server, Firebird, Oracle, and IBM DB2, one CI job each.
 
 ## Configuration
 
@@ -224,8 +224,9 @@ composer install
 | `composer stan` | PHPStan static analysis |
 | `composer test` | PHPUnit unit suite (no database required) |
 | `composer unittest` | Alias for `composer test` |
-| `composer db-sqlite` | Relation tests over the bundled SQLite files |
-| `composer db-mysql` | Finder, criteria, count, delete, and record tests over MySQL |
+| `composer db-sqlite` | Database cases over a SQLite file built from `scripts/sqlite/database.sql`, plus the relation tests over the bundled SQLite files |
+| `composer db-mysql` | Database cases over MySQL |
+| `composer db-pgsql`, `db-sqlsrv`, `db-firebird`, `db-oracle`, `db-ibm` | The same cases over PostgreSQL, SQL Server, Firebird, Oracle, and IBM DB2 |
 | `composer dbtest` | Unit + SQLite + MySQL in one PHPUnit run |
 | `composer fulltest` | Pre-commit check: `php -l` + cs-fixer dry-run + phpstan + unit tests |
 
@@ -240,9 +241,11 @@ vendor/bin/phpunit --testsuite db-sqlite --filter test_has_many
 
 ### Database test setup
 
-The `db-sqlite` suite reads the committed files in `tests/unit/Data/ActiveRecord/sqlite/` and needs only `pdo_sqlite`.
+The database cases (finders, criteria, counts, deletes, dynamic finders, record save and delete, auto-increment keys, events) are written once as abstract classes under `tests/unit/Data/ActiveRecord/DbSpecific/Cases/`. Each driver directory runs every case through its connection trait, which names the `PradoUnit::setup*Connection()` helper, the database, the connection settings, and the features the driver lacks; a test that needs a missing feature is skipped with the reason. The schema for each driver is `tests/unit/Data/ActiveRecord/scripts/<driver>/database.sql`, loaded in CI by `.github/scripts/setup-<driver>.sh`. A test class whose server or table is missing fails its first test and skips the rest.
 
-The `db-mysql` suite connects to `mysql:host=localhost;dbname=prado_unitest` as `prado_unitest` / `prado_unitest`. Create the database and user, then load `tests/unit/Data/ActiveRecord/scripts/mysql/database.sql`; `.github/scripts/setup-mysql.sh` does this in CI. A test class whose server or table is missing fails its first test and skips the rest.
+The `db-sqlite` suite builds its database from the SQLite script in the system temporary directory and needs only `pdo_sqlite`; the relation tests read the committed files in `tests/unit/Data/ActiveRecord/sqlite/`.
+
+The `db-mysql` suite connects to `mysql:host=localhost;dbname=prado_unitest` as `prado_unitest` / `prado_unitest`. Create the database and user, then load the MySQL script. The other servers use the same credentials as the PRADO framework tests: PostgreSQL `prado_unitest` / `prado_unitest` on port 5432 (create the database with the C locale, which the ordering tests expect), SQL Server `prado_unitest` on port 1433, Firebird `SYSDBA` / `masterkey` with `FIREBIRD_DB_PATH`, Oracle `prado_unitest` on `ORACLE_SERVICE_NAME` (default `FREEPDB1`), and IBM DB2 through `DB2_USER`, `DB2_PASSWORD`, and `DB2_DATABASE`.
 
 ### Pre-commit checklist
 

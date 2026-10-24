@@ -74,6 +74,11 @@
 		"unittest": "vendor/bin/phpunit --testsuite unit",
 		"db-sqlite": "vendor/bin/phpunit --testsuite db-sqlite",
 		"db-mysql": "vendor/bin/phpunit --testsuite db-mysql",
+		"db-pgsql": "vendor/bin/phpunit --testsuite db-pgsql",
+		"db-sqlsrv": "vendor/bin/phpunit --testsuite db-sqlsrv",
+		"db-firebird": "vendor/bin/phpunit --testsuite db-firebird",
+		"db-oracle": "vendor/bin/phpunit --testsuite db-oracle",
+		"db-ibm": "vendor/bin/phpunit --testsuite db-ibm",
 		"dbtest": "vendor/bin/phpunit --testsuite unit,db-sqlite,db-mysql",
 		"fulltest": [
 			"find src -name '*.php' | xargs php -l",

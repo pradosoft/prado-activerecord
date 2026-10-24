@@ -17,7 +17,7 @@ vendor/bin/phpstan analyse --memory-limit=512M
 # Run pure unit tests (no database required)
 vendor/bin/phpunit --testsuite unit
 
-# Run database-backed test suites
+# Run database-backed test suites (also db-pgsql, db-sqlsrv, db-firebird, db-oracle, db-ibm)
 vendor/bin/phpunit --testsuite db-sqlite
 vendor/bin/phpunit --testsuite db-mysql
 
@@ -132,14 +132,17 @@ The extension participates in the host PRADO application through `TActiveRecordC
 | Suite | Description | DB needed |
 |---|---|---|
 | `unit` | `tests/unit/Data/ActiveRecord` minus `DbSpecific/`, plus `tests/unit/Shell` | No |
-| `db-sqlite` | `DbSpecific/Sqlite`: relation tests over the bundled SQLite files | SQLite files in the repo |
-| `db-mysql` | `DbSpecific/Mysql`: finders, criteria, counts, deletes, records over `prado_unitest` | Yes |
+| `db-sqlite` | `DbSpecific/Sqlite`: the database cases over a file built from `scripts/sqlite/database.sql`, plus the relation tests over the bundled SQLite files | No server |
+| `db-mysql` | `DbSpecific/Mysql`: the database cases over `prado_unitest` | Yes |
+| `db-pgsql`, `db-sqlsrv`, `db-firebird`, `db-oracle`, `db-ibm` | `DbSpecific/<Driver>`: the same cases over PostgreSQL, SQL Server, Firebird, Oracle, IBM DB2 | Yes, one CI job each |
+
+The cases are abstract classes in `DbSpecific/Cases/`; each driver directory subclasses every case and adds its `<Driver>ConnectionTrait` (setup helper, database, connection settings, unsupported features). A case calls `requireFeature()` to skip on a driver that lacks `composite_pk` (SQLite metadata reports only the first key column), `composite_pk_in` (SQL Server, Firebird, DB2), `identity` (Oracle), or `null_parameters` (DB2).
 
 ### Adding a Test
 
 **Pure unit test**: place under `tests/unit/Data/ActiveRecord/` (not in `DbSpecific/`), mirroring the `src/` subdirectory. Extend `PHPUnit\Framework\TestCase` directly.
 
-**MySQL test**: place in `DbSpecific/Mysql/`, use `PradoUnitDataConnectionTrait`, return `true` from `getIsForActiveRecord()`, and list the tables in `getTestTables()`. Add missing tables to `tests/unit/Data/ActiveRecord/scripts/mysql/database.sql`; `.github/scripts/setup-mysql.sh` loads that file in CI.
+**Database test**: add it to an abstract case in `DbSpecific/Cases/` (or a new case extending `ActiveRecordDbTestCase`) and give every driver directory a thin subclass. Add missing tables to every `tests/unit/Data/ActiveRecord/scripts/<driver>/database.sql`; `.github/scripts/setup-<driver>.sh` loads that file in CI. Keep identifiers lower case and free of reserved words.
 
 **SQLite test**: place in `DbSpecific/Sqlite/`. Give the records a `getDbConnection()` that opens a file under `tests/unit/Data/ActiveRecord/sqlite/`. Keep the test read-only or restore the file afterward; the files are committed.
 

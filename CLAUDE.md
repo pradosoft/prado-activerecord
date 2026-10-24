@@ -28,7 +28,7 @@ composer dbtest
 # or:
 vendor/bin/phpunit --testsuite unit,db-sqlite,db-mysql
 
-# Run a single database suite
+# Run a single database suite (db-sqlite, db-mysql, db-pgsql, db-sqlsrv, db-firebird, db-oracle, db-ibm)
 composer db-sqlite
 composer db-mysql
 # or:
@@ -94,10 +94,12 @@ tests/
     ├── Exceptions/TActiveRecordExceptionTest.php                — unit suite: every thrown code has message text
     ├── Scaffold/InputBuilder/TScaffoldInputBaseTest.php        — unit suite
     ├── Records/                 — record fixture classes shared by the suites
-    ├── DbSpecific/Mysql/        — db-mysql suite: needs the prado_unitest MySQL database
-    ├── DbSpecific/Sqlite/       — db-sqlite suite: reads the bundled SQLite files
+    ├── DbSpecific/ActiveRecordDbTestCase.php — base of the database cases: connection per class, finder rebinding, feature gates
+    ├── DbSpecific/Cases/        — the database cases, abstract, one per concern (finders, criteria, counts, ...)
+    ├── DbSpecific/<Driver>/     — one directory per driver: <Driver>ConnectionTrait plus a thin subclass of every case
+    │                              Mysql, Sqlite, Pgsql, Sqlsrv, Firebird, Oracle, Ibm; Sqlite also holds the relation tests
     ├── sqlite/                  — fk_tests.db, test1.sqlite, blog.db
-    └── scripts/mysql, scripts/sqlite — schema scripts (database.sql is what CI loads)
+    └── scripts/<driver>/database.sql — the same schema per driver; CI loads it through .github/scripts/setup-<driver>.sh
 tests/unit/Shell/Actions/TActiveRecordActionTest.php — unit suite: prado-cli flag parsing over an in-memory SQLite
 ```
 
@@ -140,13 +142,15 @@ The bootstrap (`tests/test_tools/phpunit_bootstrap.php`) loads the Composer auto
 ### Test Suite Boundaries
 
 - **`unit` suite**: pure unit tests only (no database). Everything under `tests/unit/Data/ActiveRecord` except `DbSpecific/`, plus `tests/unit/Shell`.
-- **`db-sqlite`**: `DbSpecific/Sqlite`. Reads the committed files in `tests/unit/Data/ActiveRecord/sqlite/`. Needs `pdo_sqlite` and nothing else.
-- **`db-mysql`**: `DbSpecific/Mysql`. Needs a MySQL server with the `prado_unitest` database, user `prado_unitest` / `prado_unitest`, loaded from `tests/unit/Data/ActiveRecord/scripts/mysql/database.sql`. The tests use `PradoUnitDataConnectionTrait`, which fails the first test and skips the rest of a class when the server or a table is missing.
+- **Database cases**: `DbSpecific/Cases/*TestCase.php` are abstract and hold the tests once. `DbSpecific/<Driver>/<Driver><Case>Test.php` is a thin subclass that adds `<Driver>ConnectionTrait` (MySQL keeps the original file names). The trait names the `PradoUnit::setup*Connection()` helper, the database, the connection settings (Firebird, Oracle, and DB2 lower-case result column names), and `getUnsupportedFeatures()`; a case calls `requireFeature()` to skip on a driver that lacks `composite_pk` (SQLite metadata reports only the first key column), `composite_pk_in` (SQL Server, Firebird, DB2), `identity` (Oracle), or `null_parameters` (DB2). `ActiveRecordDbTestCase` opens one connection per class through `PradoUnitActiveRecordConnectionTrait` (the package's wrapper of the framework's `PradoUnitDataConnectionTrait`, which sets the record manager's connection), which fails the first test and skips the rest when the server or a table is missing, and rebinds the fixture finders to it.
+- **`db-sqlite`**: `DbSpecific/Sqlite`. `SqliteTestDatabase` builds the database from `scripts/sqlite/database.sql` in the system temporary directory; the relation tests read the committed files in `tests/unit/Data/ActiveRecord/sqlite/`. Needs `pdo_sqlite` and nothing else.
+- **`db-mysql`**: `DbSpecific/Mysql`. Needs a MySQL server with the `prado_unitest` database, user `prado_unitest` / `prado_unitest`, loaded from `scripts/mysql/database.sql`.
+- **`db-pgsql`, `db-sqlsrv`, `db-firebird`, `db-oracle`, `db-ibm`**: the same cases over the other servers, with the credentials the framework's `PradoUnit` helpers use. Each has a CI job; the PostgreSQL database is created with the C locale because the ordering tests expect a binary sort.
 
 ### Adding a New Test
 
 - A test that needs no database goes next to `BaseActiveRecordTest.php` or under a subdirectory mirroring `src/` (as `Scaffold/InputBuilder/` does).
-- A test that needs MySQL goes in `DbSpecific/Mysql/` in namespace `Prado\Test\Unit\Data\ActiveRecord\DbSpecific\Mysql`, uses `PradoUnitDataConnectionTrait`, returns `true` from `getIsForActiveRecord()`, and lists its tables in `getTestTables()`. Add any new table to `scripts/mysql/database.sql`.
+- A test that needs a database goes into an abstract case under `DbSpecific/Cases/` (extend `ActiveRecordDbTestCase`), with a thin subclass in every driver directory. Add any new table to every `scripts/<driver>/database.sql`; keep column and table names lower case and free of reserved words, because Oracle metadata never quotes column names. Gate a driver-specific gap with `requireFeature()` and list it in that driver's trait.
 - A test that needs only a SQLite file goes in `DbSpecific/Sqlite/` and gives its records a `getDbConnection()` override pointing at a file in `tests/unit/Data/ActiveRecord/sqlite/`.
 
 ### PradoUnit Infrastructure

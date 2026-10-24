@@ -7,12 +7,27 @@
 	  <directory suffix="Test.php">./tests/unit/Shell</directory>
 	  <exclude>./tests/unit/Data/ActiveRecord/DbSpecific</exclude>
 	</testsuite>
-	<!-- Driver-specific integration test suites. SQLite uses the bundled database files. -->
+	<!-- Driver-specific integration test suites, one CI job each. SQLite needs no server. -->
 	<testsuite name="db-sqlite">
 	  <directory suffix="Test.php">./tests/unit/Data/ActiveRecord/DbSpecific/Sqlite</directory>
 	</testsuite>
 	<testsuite name="db-mysql">
 	  <directory suffix="Test.php">./tests/unit/Data/ActiveRecord/DbSpecific/Mysql</directory>
+	</testsuite>
+	<testsuite name="db-pgsql">
+	  <directory suffix="Test.php">./tests/unit/Data/ActiveRecord/DbSpecific/Pgsql</directory>
+	</testsuite>
+	<testsuite name="db-sqlsrv">
+	  <directory suffix="Test.php">./tests/unit/Data/ActiveRecord/DbSpecific/Sqlsrv</directory>
+	</testsuite>
+	<testsuite name="db-firebird">
+	  <directory suffix="Test.php">./tests/unit/Data/ActiveRecord/DbSpecific/Firebird</directory>
+	</testsuite>
+	<testsuite name="db-oracle">
+	  <directory suffix="Test.php">./tests/unit/Data/ActiveRecord/DbSpecific/Oracle</directory>
+	</testsuite>
+	<testsuite name="db-ibm">
+	  <directory suffix="Test.php">./tests/unit/Data/ActiveRecord/DbSpecific/Ibm</directory>
 	</testsuite>
   </testsuites>
   <logging>

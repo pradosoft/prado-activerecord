@@ -1,7 +1,8 @@
 -- ActiveRecord test schema for MySQL and MariaDB.
 -- Loaded into the prado_unitest database by .github/scripts/setup-mysql.sh.
--- Cut from the PRADO framework tests/initdb_mysql.sql: these are the tables the tests under
--- tests/unit/Data/ActiveRecord/DbSpecific/Mysql read and write.
+-- Cut from the PRADO framework tests/initdb_mysql.sql, with the `order` columns renamed to `sort_order`
+-- and `Users` to `users` so the same fixture exists in every dialect: these are the tables the tests under
+-- tests/unit/Data/ActiveRecord/DbSpecific/Mysql read and write. scripts/<driver>/database.sql holds the same tables for the other drivers.
 
 DROP TABLE IF EXISTS `departments`;
 CREATE TABLE `departments` (
@@ -9,14 +10,14 @@ CREATE TABLE `departments` (
   `name` VARCHAR(255) NOT NULL,
   `description` TEXT NULL,
   `active` TINYINT(1) NOT NULL DEFAULT 0,
-  `order` SMALLINT(3) NOT NULL DEFAULT 0,
+  `sort_order` SMALLINT(3) NOT NULL DEFAULT 0,
   PRIMARY KEY (`department_id`)
 )
 AUTO_INCREMENT=1
 ENGINE = INNODB
 CHARACTER SET utf8 COLLATE utf8_general_ci;
 
-INSERT INTO `departments` (`department_id`, `name`, `description`, `active`, `order`) VALUES
+INSERT INTO `departments` (`department_id`, `name`, `description`, `active`, `sort_order`) VALUES
 (1, 'Facilities', NULL, 0, 1),
 (2, 'Marketing', NULL, 1, 2),
 (3, 'Sales', NULL, 0, 3),
@@ -30,14 +31,14 @@ DROP TABLE IF EXISTS `department_sections`;
 CREATE TABLE `department_sections` (
   `department_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `section_id` BIGINT UNSIGNED NOT NULL,
-  `order` SMALLINT(3) NOT NULL DEFAULT 0,
+  `sort_order` SMALLINT(3) NOT NULL DEFAULT 0,
   PRIMARY KEY (`department_id`, `section_id`)
 )
 AUTO_INCREMENT=1
 ENGINE = INNODB
 CHARACTER SET utf8 COLLATE utf8_general_ci;
 
-INSERT INTO `department_sections` (`department_id`, `section_id`, `order`) VALUES
+INSERT INTO `department_sections` (`department_id`, `section_id`, `sort_order`) VALUES
 (1, 1, 1),
 (1, 2, 2),
 (2, 3, 3),
@@ -88,8 +89,8 @@ AUTO_INCREMENT=1
 ENGINE = INNODB
 CHARACTER SET utf8 COLLATE utf8_general_ci;
 
-DROP TABLE IF EXISTS `Users`;
-CREATE TABLE `Users` (
+DROP TABLE IF EXISTS `users`;
+CREATE TABLE `users` (
   `username` varchar(40) NOT NULL,
   `password` varchar(40) default NULL,
   `email` varchar(40) default NULL,
@@ -106,7 +107,7 @@ CREATE TABLE `Users` (
   PRIMARY KEY  (`username`)
 ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
 
-INSERT INTO Users VALUES('admin', '123456', 'Joe.Dalton@somewhere.com', 'Joe', 'Dalton', 'Ceo', '+1 234 567890', '+1 234 567890', 1, 1, 'Dear', 'fav color', 'red');
+INSERT INTO users VALUES('admin', '123456', 'Joe.Dalton@somewhere.com', 'Joe', 'Dalton', 'Ceo', '+1 234 567890', '+1 234 567890', 1, 1, 'Dear', 'fav color', 'red');
 
 DROP TABLE IF EXISTS `teams`;
 CREATE TABLE `teams` (

@@ -10,7 +10,7 @@ class DepartmentRecord extends TActiveRecord
 	public $name;
 	public $description;
 	public $active;
-	public $order;
+	public $sort_order;
 
 	const TABLE = 'departments';
 

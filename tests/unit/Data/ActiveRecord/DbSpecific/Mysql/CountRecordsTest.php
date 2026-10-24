@@ -2,43 +2,9 @@
 
 namespace Prado\Test\Unit\Data\ActiveRecord\DbSpecific\Mysql;
 
-use Prado\Test\Unit\Data\ActiveRecord\Records\DepartmentRecord;
-use Prado\Test\Unit\Harness\Traits\PradoUnitDataConnectionTrait;
+use Prado\Test\Unit\Data\ActiveRecord\DbSpecific\Cases\CountRecordsTestCase;
 
-class CountRecordsTest extends \PHPUnit\Framework\TestCase
+class CountRecordsTest extends CountRecordsTestCase
 {
-	use PradoUnitDataConnectionTrait;
-	
-	protected function getIsForActiveRecord(): bool
-	{
-		return true;
-	}
-	
-	protected function getTestTables(): array
-	{
-		return [DepartmentRecord::TABLE];
-	}
-	
-	
-	//	------- Tests
-
-	public function test_count()
-	{
-		$finder = DepartmentRecord::finder();
-		$count = $finder->count('`order` > ?', 2);
-		$this->assertTrue($count > 0);
-	}
-
-	public function test_count_zero()
-	{
-		$finder = DepartmentRecord::finder();
-		$count = $finder->count('`order` > ?', 11);
-		$this->assertEquals($count, 0);
-	}
-
-	public function test_count_without_parameter()
-	{
-		$finder = DepartmentRecord::finder();
-		$this->assertEquals($finder->count(), 8);
-	}
+	use MysqlConnectionTrait;
 }

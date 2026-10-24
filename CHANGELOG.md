@@ -20,7 +20,7 @@ First standalone release. ActiveRecord moves out of the PRADO framework (`framew
 ### Changed
 
 - Tests are grouped by what they need. `tests/unit/Data/ActiveRecord/DbSpecific/Mysql` (the `db-mysql` suite) holds the tests that read and write the `prado_unitest` MySQL database; `DbSpecific/Sqlite` (the `db-sqlite` suite) holds the tests that use the bundled SQLite files in `tests/unit/Data/ActiveRecord/sqlite`; everything else is the `unit` suite and needs no database. `TScaffoldInputBaseTest` moves from the framework's `tests/unit/Data/DbCommon` to `tests/unit/Data/ActiveRecord/Scaffold/InputBuilder`.
-- `tests/unit/Data/ActiveRecord/scripts/mysql/database.sql` holds the ten tables the MySQL tests use, cut from the framework's `tests/initdb_mysql.sql`. `.github/scripts/setup-mysql.sh` loads it in CI.
+- The database tests run on every PDO driver PRADO supports. The tests are abstract cases under `tests/unit/Data/ActiveRecord/DbSpecific/Cases/`; each driver directory (`Mysql`, `Sqlite`, `Pgsql`, `Sqlsrv`, `Firebird`, `Oracle`, `Ibm`) subclasses every case with a connection trait over `PradoUnitActiveRecordConnectionTrait`, and `tests/unit/Data/ActiveRecord/scripts/<driver>/database.sql` holds the same schema per dialect, cut from the framework's `tests/initdb_mysql.sql`. The fixture column `order` is `sort_order` and the table `Users` is `users`, so the schema needs no quoting on any driver. CI runs one job per database, with the setup scripts under `.github/scripts/`. A case skips with the reason on a driver that lacks a feature: composite primary keys on SQLite, whose framework metadata reports only the first key column; the composite-key `IN` form on SQL Server, Firebird, and DB2; identity read-back on Oracle; NULL parameters on DB2.
 
 ### Fixed
 
