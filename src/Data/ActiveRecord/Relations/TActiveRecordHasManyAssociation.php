@@ -102,15 +102,38 @@ class TActiveRecordHasManyAssociation extends TActiveRecordRelation
 	}
 
 	/**
+	 * Returns the association table keys to the source table and to the foreign table.
+	 * The source keys exclude the association columns named in the relation. The
+	 * foreign keys exclude the source key columns. A self-referencing relation, whose
+	 * association table holds two keys to the same table, resolves to two different keys.
+	 *
+	 * | Self-referencing relation | Source keys                    | Foreign keys |
+	 * |---------------------------|--------------------------------|--------------|
+	 * | `'links.target_id'`       | the key other than `target_id` | `target_id`  |
+	 * | `'links'`                 | first key in metadata order    | second key   |
+	 *
+	 * The metadata order of keys differs between drivers. Name the foreign column in a
+	 * self-referencing relation.
 	 * @return array 2 arrays of source keys and foreign keys from the association table.
 	 */
 	public function getRelationForeignKeys()
 	{
 		$association = $this->getAssociationTable();
-		$sourceKeys = $this->findForeignKeys($association, $this->getSourceRecord(), true);
+		$sourceKeys = $this->findForeignKeys($association, $this->getSourceRecord(), true, $this->getAssociationColumns());
 		$fkObject = $this->getContext()->getForeignRecordFinder();
-		$foreignKeys = $this->findForeignKeys($association, $fkObject);
+		$foreignKeys = $this->findForeignKeys($association, $fkObject, false, array_keys($sourceKeys));
 		return [$sourceKeys, $foreignKeys];
+	}
+
+	/**
+	 * @return string[] association table columns named after the dot in the relation's
+	 *   association table, as in `'player_skills.(player_id, skill_id)'`. Empty when none are named.
+	 * @since 1.0.0 of prado-activerecord
+	 */
+	protected function getAssociationColumns()
+	{
+		$this->getAssociationTable();
+		return $this->_association_columns;
 	}
 
 	/**
@@ -344,8 +367,8 @@ class TActiveRecordHasManyAssociation extends TActiveRecordRelation
 
 	private function updateAssociationTable($obj, $fkObjects, $builder)
 	{
-		$source = $this->getSourceRecordValues($obj);
-		$foreignKeys = $this->findForeignKeys($this->getAssociationTable(), $fkObjects[0]);
+		[$sourceKeys, $foreignKeys] = $this->getRelationForeignKeys();
+		$source = $this->getSourceRecordValues($obj, $sourceKeys);
 		$success = true;
 		foreach ($fkObjects as $fkObject) {
 			$data = array_merge($source, $this->getForeignObjectValues($foreignKeys, $fkObject));
@@ -356,9 +379,8 @@ class TActiveRecordHasManyAssociation extends TActiveRecordRelation
 		return $success;
 	}
 
-	private function getSourceRecordValues($obj)
+	private function getSourceRecordValues($obj, $sourceKeys)
 	{
-		$sourceKeys = $this->findForeignKeys($this->getAssociationTable(), $obj);
 		$indexValues = $this->getIndexValues(array_values($sourceKeys), $obj);
 		$data = [];
 		$i = 0;
