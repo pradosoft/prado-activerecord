@@ -1,0 +1,27 @@
+# Changelog
+
+All notable changes to this package are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [Unreleased]
+
+First standalone release. ActiveRecord moves out of the PRADO framework (`framework/Data/ActiveRecord` and the `prado-cli` action `framework/Shell/Actions/TActiveRecordAction.php`) into this package. Namespaces and class names are unchanged. The baseline is the framework copy in PRADO `master` at commit `165efc3a8` (2026-10-23). The entries below are differences from that baseline. See the [migration guide](docs/migration.md) for upgrade steps.
+
+### Added
+
+- `composer.json` declares `extra.prado` for PRADO 4.4: `bootstrap` (`TActiveRecordConfig`), `error-messages` (`src/Data/ActiveRecord/Exceptions/messages.txt`), and `class-map` (`config/classes.json`). The legacy top-level `extra.bootstrap` remains for PRADO 4.3.
+- `config/classes.json` maps the 31 short class names (`TActiveRecord`, `TActiveRecordConfig`, `TScaffoldListView`, `TActiveRecordAction`, ...) to their FQNs. It replaces the ActiveRecord entries of the framework's `classes.php`.
+- Message text for four codes that were thrown without a definition: `ar_save_invalid` (`save()` on a deleted record), `ar_delete_invalid` (`delete()` on a new or already deleted record), `ar_data_invalid` (`copyFrom()` with a value that is neither array nor object), and `ar_belongs_to_multiple_result` (a `BELONGS_TO` or `HAS_ONE` relation that matched several rows). These exceptions previously carried the bare code as their message. The same file now defines the five `scaffold_*` codes the Scaffold controls raise as `TConfigurationException` (`scaffold_invalid_record_pk`, `scaffold_invalid_record_class`, `scaffold_unable_to_find_edit_view`, `scaffold_unable_to_find_list_view`, `scaffold_invalid_edit_renderer`), which the framework never defined either.
+- `tests/unit/Shell/Actions/TActiveRecordActionTest.php` and `tests/unit/Data/ActiveRecord/Exceptions/TActiveRecordExceptionTest.php`: the first covers the `generate` flag parsing below, the second fails when a code is thrown without message text.
+- `TActiveRecordConfig::installShellAction()` registers `TActiveRecordAction` with a `TShellApplication` during `init()`. In the framework, `TShellApplication::installShellActions()` registered the action when a `TActiveRecordConfig` module was present. The module now registers the action itself, so the framework no longer references the class. `prado-cli activerecord/generate` and `generate-all` are available under the same condition as before.
+
+### Changed
+
+- Tests are grouped by what they need. `tests/unit/Data/ActiveRecord/DbSpecific/Mysql` (the `db-mysql` suite) holds the tests that read and write the `prado_unitest` MySQL database; `DbSpecific/Sqlite` (the `db-sqlite` suite) holds the tests that use the bundled SQLite files in `tests/unit/Data/ActiveRecord/sqlite`; everything else is the `unit` suite and needs no database. `TScaffoldInputBaseTest` moves from the framework's `tests/unit/Data/DbCommon` to `tests/unit/Data/ActiveRecord/Scaffold/InputBuilder`.
+- `tests/unit/Data/ActiveRecord/scripts/mysql/database.sql` holds the ten tables the MySQL tests use, cut from the framework's `tests/initdb_mysql.sql`. `.github/scripts/setup-mysql.sh` loads it in CI.
+
+### Fixed
+
+- `prado-cli activerecord/generate` and `activerecord/generate-all` honor the `soap` and `overwrite` arguments. `actionGenerate()` stored the flags in fields the generator never read, so `@soapproperty` docblocks were never written and an existing file was always skipped. `generate-all` also joined the flags into a command line string in which a `false` first flag shifted `overwrite` into the `soap` position. The flags are now passed positionally, and `generate()` passes its tokens through unchanged.
+- `MANY_TO_MANY` relations that name the association table's foreign key columns, as in `'player_skills.(player_id, skill_id)'`, split the column list on commas and spaces. The pattern matched a literal `*` instead of whitespace, so the list stayed one column name.

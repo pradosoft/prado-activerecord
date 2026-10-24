@@ -1,0 +1,93 @@
+{
+	"name": "pradosoft/prado-activerecord",
+	"type": "prado4-extension",
+	"description": "Active Record ORM and Scaffold controls for the PRADO PHP Framework",
+	"keywords": ["prado", "framework", "activerecord", "orm", "scaffold", "database"],
+	"homepage": "https://github.com/pradosoft/prado-activerecord",
+	"license": "BSD-3-Clause",
+	"authors": [
+		{
+			"name": "Wei Zhuo",
+			"email": "weizhuo@gmail.com",
+			"role": "Developer"
+		},
+		{
+			"name": "Fabio Bas",
+			"email": "ctrlaltca@gmail.com",
+			"role": "Developer"
+		},
+		{
+			"name": "Brad Anderson",
+			"email": "belisoful@icloud.com",
+			"role": "Developer",
+			"homepage": "https://github.com/belisoful"
+		}
+	],
+	"autoload": {
+		"psr-4": {
+			"Prado\\": "src"
+		}
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"Prado\\Test\\Unit\\": ["tests/unit/", "vendor/pradosoft/prado/tests/unit/"]
+		}
+	},
+	"repositories": [
+		{
+			"type": "composer",
+			"url": "https://asset-packagist.org"
+		}
+	],
+	"require": {
+		"php": ">=8.1.0",
+		"ext-pdo": "*"
+	},
+	"require-dev": {
+		"pradosoft/prado": "dev-master",
+		"phpunit/phpunit": "^10",
+		"phpdocumentor/shim": "^3",
+		"friendsofphp/php-cs-fixer": "^3.94",
+		"phpstan/phpstan": "^2.1"
+	},
+	"suggest": {
+		"ext-pdo_mysql": "MySQL and MariaDB records",
+		"ext-pdo_pgsql": "PostgreSQL records",
+		"ext-pdo_sqlite": "SQLite records",
+		"ext-pdo_sqlsrv": "Microsoft SQL Server records",
+		"ext-pdo_oci": "Oracle records",
+		"ext-pdo_ibm": "IBM DB2 records",
+		"ext-pdo_firebird": "Firebird and InterBase records"
+	},
+	"config": {
+		"platform": {
+			"php": "8.2"
+		},
+		"allow-plugins": {
+			"phpdocumentor/shim": true
+		}
+	},
+	"scripts": {
+		"fix": "vendor/bin/php-cs-fixer fix src/",
+		"stan": "phpstan analyse --memory-limit=512M",
+		"test": "vendor/bin/phpunit --testsuite unit",
+		"unittest": "vendor/bin/phpunit --testsuite unit",
+		"db-sqlite": "vendor/bin/phpunit --testsuite db-sqlite",
+		"db-mysql": "vendor/bin/phpunit --testsuite db-mysql",
+		"dbtest": "vendor/bin/phpunit --testsuite unit,db-sqlite,db-mysql",
+		"fulltest": [
+			"find src -name '*.php' | xargs php -l",
+			"vendor/bin/php-cs-fixer fix --dry-run src/",
+			"@stan",
+			"@test"
+		]
+	},
+	"extra": {
+		"bootstrap": "Prado\\Data\\ActiveRecord\\TActiveRecordConfig",
+		"prado": {
+			"bootstrap": "Prado\\Data\\ActiveRecord\\TActiveRecordConfig",
+			"error-messages": "src/Data/ActiveRecord/Exceptions/messages.txt",
+			"class-map": "config/classes.json"
+		}
+	}
+}

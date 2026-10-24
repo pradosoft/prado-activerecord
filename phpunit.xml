@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" bootstrap="./tests/test_tools/phpunit_bootstrap.php" colors="true" stopOnFailure="false" xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.5/phpunit.xsd" cacheDirectory=".phpunit.cache">
+  <testsuites>
+	<testsuite name="unit">
+	  <!-- Pure unit tests: no database server required -->
+	  <directory suffix="Test.php">./tests/unit/Data/ActiveRecord</directory>
+	  <directory suffix="Test.php">./tests/unit/Shell</directory>
+	  <exclude>./tests/unit/Data/ActiveRecord/DbSpecific</exclude>
+	</testsuite>
+	<!-- Driver-specific integration test suites. SQLite uses the bundled database files. -->
+	<testsuite name="db-sqlite">
+	  <directory suffix="Test.php">./tests/unit/Data/ActiveRecord/DbSpecific/Sqlite</directory>
+	</testsuite>
+	<testsuite name="db-mysql">
+	  <directory suffix="Test.php">./tests/unit/Data/ActiveRecord/DbSpecific/Mysql</directory>
+	</testsuite>
+  </testsuites>
+  <logging>
+	<testdoxHtml outputFile="./build/tests/index.html"/>
+  </logging>
+  <extensions>
+  </extensions>
+  <php>
+	<ini name="memory_limit" value="1G"/>
+	<const name="PRADO_TEST_RUN" value="true"/>
+  </php>
+</phpunit>

@@ -1,0 +1,113 @@
+name: PRADO ActiveRecord
+on: [push, pull_request]
+env:
+  PHP_VERSION: '8.2'
+jobs:
+  prado-activerecord:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php-versions: ['8.2', '8.3', '8.4', '8.5']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup PHP, with composer and extensions
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-versions }}
+          extensions: ctype, dom, intl, json, mbstring, pdo_sqlite, openssl, pcre, spl, zlib
+          tools: php-cs-fixer, phpstan, cs2pr
+
+      - name: Validate composer.json and composer.lock
+        run: composer validate --strict
+
+      - name: Validate code syntax using php-cs-fixer
+        run: php-cs-fixer fix --dry-run --diff --using-cache=no
+
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache dependencies
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies
+        run: composer install --no-progress --prefer-dist --optimize-autoloader
+
+      - name: Validate code using phpstan
+        run: phpstan analyse --error-format=checkstyle | cs2pr
+
+      - name: Run Unit Tests
+        run: composer test
+
+  db-sqlite:
+    name: SQLite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup PHP with SQLite extensions
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ctype, dom, intl, json, mbstring, pdo_sqlite, openssl, pcre, spl, zlib
+
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache dependencies
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies
+        run: composer install --no-progress --prefer-dist --optimize-autoloader
+
+      - name: Run SQLite tests
+        run: vendor/bin/phpunit --testsuite db-sqlite
+
+  db-mysql:
+    name: MySQL
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup PHP with MySQL extensions
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ctype, dom, intl, json, mbstring, pdo_mysql, openssl, pcre, spl, zlib
+
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache dependencies
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies
+        run: composer install --no-progress --prefer-dist --optimize-autoloader
+
+      - name: Setup MySQL schema
+        run: bash .github/scripts/setup-mysql.sh
+
+      - name: Run MySQL tests
+        run: vendor/bin/phpunit --testsuite db-mysql
