@@ -97,7 +97,12 @@ class TActiveRecordHasManyAssociation extends TActiveRecordRelation
 	{
 		[$sourceKeys, $foreignKeys] = $this->getRelationForeignKeys();
 		$properties = array_values($sourceKeys);
-		$indexValues = $this->getIndexValues($properties, $results);
+		$indexValues = $this->getNonNullIndexValues($this->getIndexValues($properties, $results));
+		if (count($indexValues) === 0) {
+			$collections = [];
+			$this->setResultCollection($results, $collections, $properties);
+			return;
+		}
 		$this->fetchForeignObjects($results, $foreignKeys, $indexValues, $sourceKeys);
 	}
 
@@ -226,6 +231,8 @@ class TActiveRecordHasManyAssociation extends TActiveRecordRelation
 	}
 
 	/**
+	 * Creates a foreign record from a joined row. The record uses the connection of
+	 * the foreign record finder, which ran the query.
 	 * @param string $type active record class name.
 	 * @param array $row row data
 	 * @param array $foreignKeys foreign key column names
@@ -234,6 +241,7 @@ class TActiveRecordHasManyAssociation extends TActiveRecordRelation
 	protected function createFkObject($type, $row, $foreignKeys)
 	{
 		$obj = TActiveRecord::createRecord($type, $row);
+		$obj->setDbConnection($this->getContext()->getForeignRecordFinder()->getDbConnection());
 		if (count($this->_association_columns) > 0) {
 			$i = 0;
 			foreach ($foreignKeys as $ref => $fk) {
@@ -325,7 +333,7 @@ class TActiveRecordHasManyAssociation extends TActiveRecordRelation
 	public function updateAssociatedRecords()
 	{
 		$obj = $this->getContext()->getSourceRecord();
-		$fkObjects = &$obj->{$this->getContext()->getProperty()};
+		$fkObjects = $obj->{$this->getContext()->getProperty()};
 		$success = true;
 		if (($total = count($fkObjects)) > 0) {
 			$source = $this->getSourceRecord();

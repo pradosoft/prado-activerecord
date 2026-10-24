@@ -217,14 +217,33 @@ abstract class TActiveRecordRelation
 
 	/**
 	 * Fetches the foreign objects using TActiveRecord::findAllByIndex()
+	 * Each call passes a copy of the relation criteria, because findAllByIndex() adds
+	 * the key condition to the criteria it receives. Key tuples that hold a null are
+	 * skipped, and no query runs when none remain.
 	 * @param array $fields field names
 	 * @param array $indexValues foreign key index values.
 	 * @return TActiveRecord[] foreign objects.
 	 */
 	protected function findForeignObjects($fields, $indexValues)
 	{
+		$indexValues = $this->getNonNullIndexValues($indexValues);
+		if (count($indexValues) === 0) {
+			return [];
+		}
 		$finder = $this->getContext()->getForeignRecordFinder();
-		return $finder->findAllByIndex($this->_criteria, $fields, $indexValues);
+		return $finder->findAllByIndex(clone $this->getCriteria(), $fields, $indexValues);
+	}
+
+	/**
+	 * Removes the key tuples that hold a null. A null key matches no row, so a
+	 * record whose key is null has no foreign objects.
+	 * @param array $indexValues key tuples, one array of values per record
+	 * @return array the tuples without a null value, reindexed
+	 * @since 1.0.0 of prado-activerecord
+	 */
+	protected function getNonNullIndexValues($indexValues)
+	{
+		return array_values(array_filter($indexValues, fn ($tuple) => !in_array(null, $tuple, true)));
 	}
 
 	/**

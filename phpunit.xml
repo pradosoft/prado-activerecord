@@ -30,6 +30,13 @@
 	  <directory suffix="Test.php">./tests/unit/Data/ActiveRecord/DbSpecific/Ibm</directory>
 	</testsuite>
   </testsuites>
+  <!-- Coverage source. Inert until a run asks for coverage on the command line,
+       as `composer coverage` does. Narrow a run with the coverage-filter option. -->
+  <source>
+	<include>
+	  <directory suffix=".php">./src</directory>
+	</include>
+  </source>
   <logging>
 	<testdoxHtml outputFile="./build/tests/index.html"/>
   </logging>

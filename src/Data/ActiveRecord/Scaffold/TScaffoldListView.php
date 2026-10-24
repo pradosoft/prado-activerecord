@@ -126,7 +126,7 @@ class TScaffoldListView extends TScaffoldBase
 		}
 		$order = explode(' ', $this->getSort()->getSelectedValue(), 2);
 		if (count($order) === 2) {
-			$criteria->setOrdersBy($order);
+			$criteria->setOrdersBy([$order[0] => $order[1]]);
 		}
 		return $criteria;
 	}
