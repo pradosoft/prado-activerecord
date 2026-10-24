@@ -193,8 +193,15 @@ Every other name follows `TComponent` rules: a public property, a getter/setter 
 | `toArray()` | Array keyed by column name, one entry per table column, values from the record |
 | `toJSON()` | `json_encode()` of `toArray()` |
 | `equals($record, $strict = false)` | `true` when both records are the same class and their primary key values match (`==`, or `===` with `$strict`). A table without primary keys compares every column. |
+| `getViewData()` | Array keyed by property name: every public non-static property that is not a relation, in declaration order, then one entry per `$RELATIONS` key. `BELONGS_TO` and `HAS_ONE` give the related record or `null`; `HAS_MANY` and `MANY_TO_MANY` give the related records as a list. A relation that is not loaded loads on this call. |
+| `setViewData(array $data)` | Assigns each key that names a column property. Relation keys and unknown keys are ignored. |
 
-`toArray()` lists table columns, so extra properties and relation values are left out.
+`toArray()` lists table columns, so extra properties and relation values are left out. `getViewData()` lists declared
+properties, so it needs no database connection for the columns and includes the relations.
+
+`getViewData()` and `setViewData()` are the `Prado\Web\UI\IViewDataModel` contract of PRADO 4.4, provided by name so a
+record also runs on PRADO 4.3. `TTemplateControl::tryToUpdateView()` and `tryToUpdateModel()` call them; see
+[integration.md](integration.md#binding-records-to-template-controls).
 
 ---
 

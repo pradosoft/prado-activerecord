@@ -1079,4 +1079,72 @@ abstract class TActiveRecord extends \Prado\TComponent
 	{
 		return json_encode($this->toArray());
 	}
+
+	/**
+	 * Returns the record data for a view, keyed by property name.
+	 *
+	 * The columns come first, under their property names (the names after
+	 * {@see $COLUMN_MAPPING}): every public non-static property of the record class
+	 * that is not a relation. Then comes one entry per {@see $RELATIONS} key, under
+	 * the declared key: a `BELONGS_TO` or `HAS_ONE` relation gives the related record
+	 * or null, a `HAS_MANY` or `MANY_TO_MANY` relation gives the related records as a
+	 * list. A relation that is not loaded loads on this call, as `$record->relation`
+	 * does.
+	 *
+	 * `TTemplateControl::tryToUpdateView()` binds this array to the controls whose IDs
+	 * match the keys. This method and {@see setViewData()} are the
+	 * `Prado\Web\UI\IViewDataModel` contract of PRADO 4.4, provided by name so the
+	 * record also runs on PRADO 4.3, where the interface does not exist.
+	 *
+	 * @return array<string, mixed> columns and relations keyed by property name
+	 * @since 1.0.0 of prado-activerecord
+	 */
+	public function getViewData(): array
+	{
+		$data = [];
+		foreach ($this->getViewColumnNames() as $name) {
+			$data[$name] = $this->{$name};
+		}
+		foreach ($this->getRecordRelations() as [$name]) {
+			$data[$name] = $this->{$name};
+		}
+		return $data;
+	}
+
+	/**
+	 * Sets the record columns from view data.
+	 *
+	 * Each key that names a column property, as {@see getViewData()} lists them, is
+	 * assigned its value. Relation keys and keys that are not record properties are
+	 * ignored, so the values of every input control of a view can be passed as they
+	 * are. `TTemplateControl::tryToUpdateModel()` does this.
+	 *
+	 * @param array<string, mixed> $data values keyed by property name
+	 * @since 1.0.0 of prado-activerecord
+	 */
+	public function setViewData(array $data): void
+	{
+		foreach ($this->getViewColumnNames() as $name) {
+			if (array_key_exists($name, $data)) {
+				$this->{$name} = $data[$name];
+			}
+		}
+	}
+
+	/**
+	 * Returns the names of the column properties: the public non-static properties
+	 * of the record class that are not {@see $RELATIONS} keys.
+	 * @return string[] property names in declaration order
+	 * @since 1.0.0 of prado-activerecord
+	 */
+	protected function getViewColumnNames(): array
+	{
+		$names = [];
+		foreach (static::getReflectionClass()->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
+			if (!$property->isStatic() && !$this->hasRecordRelation($property->getName())) {
+				$names[] = $property->getName();
+			}
+		}
+		return $names;
+	}
 }

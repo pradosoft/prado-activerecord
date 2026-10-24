@@ -274,12 +274,13 @@ The same two events are raised on the record that made the call, and `save()` an
 
 ## Binding Records to Template Controls
 
-`Prado\Web\UI\TTemplateControl` has two methods that move values between a record and the controls on a page or template control. They match by name: a control whose `ID` equals a record property name.
+`Prado\Web\UI\TTemplateControl` has two methods that move values between a model and the controls on a page or template control. They match by name: a control whose `ID` equals a key of the model data. A record is a model through `getViewData()` and `setViewData()` (see [records.md](records.md#exporting-data)), which are PRADO 4.4's `Prado\Web\UI\IViewDataModel` contract. The record provides them by name, so the binding also works on PRADO 4.3, whose `tryToUpdateView()` reads the record's public properties and `$RELATIONS` directly.
 
 | Method | Direction |
 |---|---|
-| `tryToUpdateView($record, $throwExceptions = false)` | Record property values → control values |
-| `tryToUpdateAR($record, $throwExceptions = false)` | Control values → record property values |
+| `tryToUpdateView($record, $throwExceptions = false)` | `getViewData()` → control values |
+| `tryToUpdateModel($record, $throwExceptions = false)` | Input control values → `setViewData()` (PRADO 4.4) |
+| `tryToUpdateAR($record, $throwExceptions = false)` | Same as `tryToUpdateModel()`; the name from PRADO 4.3 |
 
 ```php
 // Fill the form from a record
@@ -292,22 +293,19 @@ $this->tryToUpdateAR($student);
 $student->save();
 ```
 
-Three control types are recognized. A matching control of any other type is skipped.
+`tryToUpdateView()` sets each value of `getViewData()` on the control with that `ID`. The control type decides what it takes; a key without a control, or with a control of another type, is skipped.
 
-| Control | Property carried |
-|---|---|
-| `TDatePicker` | `Date` |
-| `TTextBox` and subclasses | `Text` |
-| `TCheckBox` | `Checked`; `tryToUpdateView()` casts the record value to `bool` |
+| Control | Value | Takes |
+|---|---|---|
+| `TDataBoundControl` (`TDropDownList`, `TRepeater`, ...) | iterable, such as a `HAS_MANY` list | `DataSource`, then `dataBind()` |
+| `TDatePicker` | date string | `Date` |
+| any `IDataRenderer` (`TTextBox`, `TCheckBox`, `TLabel`, `TListControl`, ...) | scalar | `Data`: `Text`, `Checked`, `SelectedValue` |
 
-`tryToUpdateView()` also walks the `$RELATIONS` array after the declared properties:
+Relations follow the columns in `getViewData()`. A `BELONGS_TO` or `HAS_ONE` value is the related record, so the control shows its string form; a `HAS_MANY` or `MANY_TO_MANY` value is a list for a data-bound control. A relation that is not loaded loads during the call.
 
-- `BELONGS_TO` or `HAS_ONE` → the matching control's `Text` is set from the relation value.
-- `HAS_MANY` and the matching control is a `TListControl` → the related records become its `DataSource` and `dataBind()` is called.
+`tryToUpdateModel()` reads every input control registered with the view (`IPostBackDataHandler` controls that are also `IDataRenderer`, a `TDatePicker` as `Date`) and passes the values, keyed by control `ID`, to `setViewData()`. The record assigns the keys that name column properties and ignores relation keys and unknown keys. Related records are never written back from the view.
 
-`tryToUpdateAR()` stops at the relations. Related records are never written back from the view.
-
-Both methods catch every exception raised while matching one property and continue with the next. A mistyped `ID`, a missing control, or an unsupported control type produces no error and no value. Pass `true` as the second argument to rethrow instead:
+Both methods catch every exception raised while binding one control and continue with the next. A mistyped `ID` produces no error and no value. Pass `true` as the second argument to rethrow instead:
 
 ```php
 $this->tryToUpdateView($student, true);
