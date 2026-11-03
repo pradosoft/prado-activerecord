@@ -65,8 +65,8 @@ class TScaffoldSearchTest extends ScaffoldTestCase
 		$this->assertFalse($this->search($search, 'item 1'));
 
 		$this->assertSame(
-			"((\"id\" LIKE '%item%' AND \"id\" LIKE '%1%') OR (\"item_name\" LIKE '%item%' AND \"item_name\" LIKE '%1%')"
-			. " OR (\"notes\" LIKE '%item%' AND \"notes\" LIKE '%1%') OR (\"price\" LIKE '%item%' AND \"price\" LIKE '%1%'))",
+			"((\"id\" LIKE '%item%' ESCAPE '\\' AND \"id\" LIKE '%1%' ESCAPE '\\') OR (\"item_name\" LIKE '%item%' ESCAPE '\\' AND \"item_name\" LIKE '%1%' ESCAPE '\\')"
+			. " OR (\"notes\" LIKE '%item%' ESCAPE '\\' AND \"notes\" LIKE '%1%' ESCAPE '\\') OR (\"price\" LIKE '%item%' ESCAPE '\\' AND \"price\" LIKE '%1%' ESCAPE '\\'))",
 			$list->getSearchCondition()
 		);
 		$this->assertSame([], $this->_container->events, 'a handled search is left to bubble on by the caller');
@@ -107,11 +107,11 @@ class TScaffoldSearchTest extends ScaffoldTestCase
 
 		$search->setSearchableFields('item_name');
 		$this->search($search, '03');
-		$this->assertSame("((\"item_name\" LIKE '%03%'))", $list->getSearchCondition());
+		$this->assertSame("((\"item_name\" LIKE '%03%' ESCAPE '\\'))", $list->getSearchCondition());
 
 		$search->setSearchableFields(' item_name ,notes ');
 		$this->search($search, '03');
-		$this->assertSame("((\"item_name\" LIKE '%03%') OR (\"notes\" LIKE '%03%'))", $list->getSearchCondition());
+		$this->assertSame("((\"item_name\" LIKE '%03%' ESCAPE '\\') OR (\"notes\" LIKE '%03%' ESCAPE '\\'))", $list->getSearchCondition());
 
 		$search->setSearchableFields('   ');
 		$this->search($search, '03');

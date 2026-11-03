@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `TOracleScaffoldInput` builds Scaffold inputs for Oracle columns. `TScaffoldInputBase::createInputBuilder()` selects it for the `oci` driver. Ported from PRADO pull request #1369, which landed after the baseline.
+
+### Changed
+
+- `messages.txt` entries are ICU MessageFormat patterns, as PRADO 4.4 formats them (PRADO pull request #1437). A placeholder in quotes is written `''{0}''`; `'{0}'` renders the literal `{0}`. The `ar_primary_key_is_scalar` message closes the quote around the invalid value.
+- The database tests run the composite primary key cases on SQLite and the identity cases on Firebird. PRADO pull request #1360 fixed the SQLite composite key metadata and the Firebird identity read-back, so neither gate remains.
+- The test bootstrap gives the application an unbuffered response. Rendering a form reads the CSRF token, which bootstraps the default response module and its output buffer.
+
+### Fixed
+
+- `docs/scaffold.md` lists the `sqlsrv` and `dblib` drivers under `TMssqlScaffoldInput`.
+
+## [1.0.0] - 2026-10-25
+
 First standalone release. ActiveRecord moves out of the PRADO framework (`framework/Data/ActiveRecord` and the `prado-cli` action `framework/Shell/Actions/TActiveRecordAction.php`) into this package. Namespaces and class names are unchanged. The baseline is the framework copy in PRADO `master` at commit `165efc3a8` (2026-10-23). The entries below are differences from that baseline. See the [migration guide](docs/migration.md) for upgrade steps.
 
 ### Added

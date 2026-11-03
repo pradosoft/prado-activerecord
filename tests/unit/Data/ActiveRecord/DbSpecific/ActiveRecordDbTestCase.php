@@ -50,7 +50,6 @@ abstract class ActiveRecordDbTestCase extends \PHPUnit\Framework\TestCase
 
 	/**
 	 * Features the driver lacks. A test that needs one calls {@see requireFeature()}.
-	 * - `composite_pk`: a composite primary key reported in full by the driver metadata
 	 * - `composite_pk_in`: the `(a, b) IN ((1, 2), (3, 4))` form the gateway builds for a composite primary key
 	 * - `identity`: an auto-increment primary key that the metadata reports and the gateway reads back after an insert
 	 * - `null_parameters`: a NULL bound as PDO::PARAM_NULL

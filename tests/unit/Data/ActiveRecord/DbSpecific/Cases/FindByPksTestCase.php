@@ -49,7 +49,6 @@ abstract class FindByPksTestCase extends ActiveRecordDbTestCase
 
 	public function test_find_by_composite_pks()
 	{
-		$this->requireFeature('composite_pk', 'The driver metadata reports only the first column of a composite primary key.');
 		$this->requireFeature('composite_pk_in', 'The driver does not accept the (a, b) IN ((1, 2)) form the gateway builds for a composite primary key.');
 		$ds = DepSections::finder()->findAllByPks([1, 1], [2, 5]);
 		$this->assertEquals(count($ds), 2);

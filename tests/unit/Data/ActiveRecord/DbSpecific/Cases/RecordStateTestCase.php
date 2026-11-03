@@ -73,7 +73,6 @@ abstract class RecordStateTestCase extends ActiveRecordDbTestCase
 
 	public function test_find_by_composite_pk_arguments()
 	{
-		$this->requireFeature('composite_pk', 'The driver metadata reports only the first column of a composite primary key.');
 		$section = DepSections::finder()->findByPk(1, 2);
 		$this->assertNotNull($section);
 		$this->assertEquals(2, $section->sort_key);

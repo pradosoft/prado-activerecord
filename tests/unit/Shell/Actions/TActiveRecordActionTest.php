@@ -294,7 +294,7 @@ class TActiveRecordActionTest extends \PHPUnit\Framework\TestCase
 
 		$this->newAction()->actionGenerate(['generate', 'soap_users', self::ALIAS . '.records.SoapUserRecord', 'soap']);
 
-		$props = "\n\t/**\n\t * @var string \$id\n\t * @soapproperty\n\t */\n\tpublic \$id;\n"
+		$props = "\n\t/**\n\t * @var integer \$id\n\t * @soapproperty\n\t */\n\tpublic \$id;\n"
 			. "\n\t/**\n\t * @var string \$username\n\t * @soapproperty\n\t */\n\tpublic \$username;";
 		$this->assertSame($this->expectedClass('SoapUserRecord', 'soap_users', $props), $this->readGenerated($file));
 	}

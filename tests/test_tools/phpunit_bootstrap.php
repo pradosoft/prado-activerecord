@@ -5,6 +5,13 @@ require_once(__DIR__ . '/../../vendor/pradosoft/prado/framework/Prado.php');
 
 $application = new \Prado\Test\Unit\Harness\TTestApplication();
 
+// Rendering a form reads the CSRF token, which bootstraps the default response module on first
+// use. That module starts an output buffer the rendering test never closes, so the tests share
+// an unbuffered response.
+$response = new \Prado\Web\THttpResponse();
+$response->setBufferOutput(false);
+$response->init(null);
+
 $classMap = json_decode(file_get_contents(__DIR__ . '/../../config/classes.json'), true);
 
 // Prado::using() includes a class file from the framework directory when the class is not

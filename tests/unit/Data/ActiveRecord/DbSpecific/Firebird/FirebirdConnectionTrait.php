@@ -19,9 +19,7 @@ trait FirebirdConnectionTrait
 
 	protected function getUnsupportedFeatures(): array
 	{
-		// TFirebirdCommandBuilder::getLastInsertID() reads RDB$GET_CONTEXT('SYSTEM', 'LAST_INSERT_ID'),
-		// a context variable Firebird does not define, so the gateway cannot read an identity value back.
-		return ['composite_pk_in', 'identity'];
+		return ['composite_pk_in'];
 	}
 
 }

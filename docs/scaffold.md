@@ -250,11 +250,12 @@ The condition comes from the command builder's `getSearchExpression()`: the text
 | `mysql`, `mysqli` | `TMysqlScaffoldInput` |
 | `sqlite`, `sqlite2` | `TSqliteScaffoldInput` |
 | `pgsql` | `TPgsqlScaffoldInput` |
-| `mssql` | `TMssqlScaffoldInput` |
+| `mssql`, `sqlsrv`, `dblib` | `TMssqlScaffoldInput` |
 | `ibm` | `TIbmScaffoldInput` |
 | `firebird`, `interbase` | `TFirebirdScaffoldInput` |
+| `oci` | `TOracleScaffoldInput` |
 
-The `sqlsrv`, `dblib`, and `oci` drivers have no builder. Active Record works on them; the edit view raises `TConfigurationException` `ar_invalid_database_driver` unless a handler supplies a builder (see below).
+Another driver has no builder. The edit view raises `TConfigurationException` `ar_invalid_database_driver` unless a handler supplies one (see below).
 
 Every builder extends `TScaffoldInputCommon`, which creates the controls. `TMysqlScaffoldInput` maps column types as follows; the other builders map their database's type names to the same controls.
 
@@ -281,6 +282,7 @@ The other builders compare the column type name reported by their database:
 | `TMssqlScaffoldInput` | `bit` | `smallint`, `int`, `bigint`, `tinyint` | `decimal`, `float`, `money`, `numeric`, `real`, `smallmoney` | | | `datetime`, `smalldatetime` | `text` |
 | `TIbmScaffoldInput` | | `smallint`, `integer`, `bigint` | `decimal`, `numeric`, `real`, `float`, `double` | `date` | `time` | `timestamp` | `char`, `varchar` |
 | `TFirebirdScaffoldInput` | `BOOLEAN` | `SMALLINT`, `INTEGER`, `BIGINT` | `FLOAT`, `DOUBLE PRECISION`, `DECIMAL`, `NUMERIC`, `DECFLOAT(16)`, `DECFLOAT(34)` | `DATE` | `TIME`, `TIME WITH TIME ZONE` | `TIMESTAMP`, `TIMESTAMP WITH TIME ZONE` | `CHAR`, `VARCHAR`, `TEXT`, `BLOB` |
+| `TOracleScaffoldInput` | `BOOLEAN` | `INTEGER`, `INT`, `SMALLINT`; `NUMBER`, `DECIMAL`, `NUMERIC` with scale 0 | `NUMBER`, `DECIMAL`, `NUMERIC` with another or no scale; `FLOAT`, `BINARY_FLOAT`, `BINARY_DOUBLE`, `REAL`, `DOUBLE PRECISION` | | | `DATE`, `TIMESTAMP`, `TIMESTAMP WITH TIME ZONE`, `TIMESTAMP WITH LOCAL TIME ZONE` | `CLOB`, `NCLOB`, `LONG`, `BLOB` |
 
 Any other type gives the plain `TTextBox`. `TMssqlScaffoldInput` disables the text box for excluded columns and stores an empty text box as `NULL` when the column allows it.
 
