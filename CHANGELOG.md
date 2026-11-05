@@ -24,7 +24,7 @@ The Active Record classes follow PRADO's Data layer renovation for 4.4 (pradosof
 - `TActiveRecordGateway` reads table metadata through the connection's `getDbMetaData()` when the connection provides it (PRADO 4.4), so a driver that is not a `TDbConnection` resolves its metadata class.
 - Finder criteria may be any `IDataCriteria` (PRADO 4.4) besides `TSqlCriteria`. The finder still works on a copy.
 - `TActiveRecord` drops its connection from serialization through `_getZappableSleepProps()`.
-- The tests pass on PRADO 4.4, whose SQLite connection returns native integer types and enforces foreign keys, and whose `IDataConnection` adds `getLastTransaction()`, `commit()`, `rollback()`, and `getDbMetaData()`.
+- The tests pass on PRADO 4.4, whose SQLite connection returns native integer types and enforces foreign keys, whose `IDataConnection` adds `getLastTransaction()`, `commit()`, `rollback()`, and `getDbMetaData()`, and which replaces the `Prado\Data\Common\Mssql` classes with `Prado\Data\Common\SqlSrv`.
 - `messages.txt` entries are ICU MessageFormat patterns, as PRADO 4.4 formats them (PRADO pull request #1437). A placeholder in quotes is written `''{0}''`; `'{0}'` renders the literal `{0}`. The `ar_primary_key_is_scalar` message closes the quote around the invalid value.
 - The database tests run the composite primary key cases on SQLite and the identity cases on Firebird. PRADO pull request #1360 fixed the SQLite composite key metadata and the Firebird identity read-back, so neither gate remains.
 - The test bootstrap gives the application an unbuffered response. Rendering a form reads the CSRF token, which bootstraps the default response module and its output buffer.
