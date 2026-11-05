@@ -19,7 +19,8 @@ use Prado\Exceptions\TConfigurationException;
  *
  * TScaffoldInputBase is the base class for creating scaffold input builders
  * that generate appropriate input controls for active record columns based on
- * the database driver.
+ * the database driver.  It implements {@see IScaffoldInput}, the common
+ * interface that all scaffold input builders must satisfy.
  *
  * This class provides the foundation for database-specific input builder implementations
  * (e.g., TMysqlScaffoldInput, TSqliteScaffoldInput, TOracleScaffoldInput, etc.) that map database
@@ -39,7 +40,7 @@ use Prado\Exceptions\TConfigurationException;
  */
 class TScaffoldInputBase implements IScaffoldInput
 {
-	public const DEFAULT_ID = 'scaffold_input';
+	public const DEFAULT_ID = IScaffoldInput::DEFAULT_ID;
 	private $_parent;
 
 	/**

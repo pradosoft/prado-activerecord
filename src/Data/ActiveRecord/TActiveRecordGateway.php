@@ -23,8 +23,47 @@ use Prado\Prado;
 use Prado\TComponentReflection;
 
 /**
- * TActiveRecordGateway excutes the SQL command queries and returns the data
- * record as arrays (for most finder methods).
+ * TActiveRecordGateway class
+ *
+ * TActiveRecordGateway executes SQL command queries and returns the data as arrays for finder methods.
+ *
+ * This gateway acts as the bridge between TActiveRecord models and the underlying database.
+ * It handles all CRUD operations (Create, Read, Update, Delete) and provides methods for
+ * finding records by various criteria.
+ *
+ * Each TActiveRecord subclass has a corresponding gateway instance managed by TActiveRecordManager.
+ * The gateway uses TDataGatewayCommand to build and execute database-specific SQL commands.
+ *
+ * Example:
+ * ```php
+ * // Get the gateway from a record instance
+ * $user = new UserRecord();
+ * $gateway = $user->getRecordGateway();
+ *
+ * // Find a record by primary key
+ * $data = $gateway->findRecordByPK($user, ['username' => 'admin']);
+ *
+ * // Insert a new record
+ * $newUser = new UserRecord();
+ * $newUser->username = 'newuser';
+ * $newUser->email = 'new@example.com';
+ * $gateway->insert($newUser);
+ *
+ * // Update existing record
+ * $user->email = 'updated@example.com';
+ * $gateway->update($user);
+ *
+ * // Delete a record
+ * $gateway->delete($user);
+ * ```
+ *
+ * {@see insertOrIgnore()} and {@see upsert()} write a record that may conflict with an
+ * existing key. They need the `insertOrIgnore()` and `upsert()` methods of the PRADO 4.4
+ * data gateway command.
+ *
+ * A table whose metadata is not SQL table information and declares no column besides the
+ * primary key, such as a document collection, is schemaless ({@see getIsSchemaless()}).
+ * Its insert and update values come from the record's public properties.
  *
  * @author Wei Zhuo <weizho[at]gmail[dot]com>
  * @since 3.1
@@ -145,7 +184,7 @@ class TActiveRecordGateway extends \Prado\TComponent
 			//call this first to ensure that unserializing the cache
 			//will find the correct driver dependent classes.
 			if (!isset($this->_meta[$connection])) {
-				$this->_meta[$connection] = TDbMetaData::getInstance($connection);
+				$this->_meta[$connection] = $this->createMetaData($connection);
 			}
 
 			$connStr = $connection instanceof TDbConnection
@@ -166,6 +205,23 @@ class TActiveRecordGateway extends \Prado\TComponent
 			$this->_tables[$connection] = $tables;
 		}
 		return $tables[$tableName];
+	}
+
+	/**
+	 * Creates the meta data reader for a connection.
+	 * A connection that provides `getDbMetaData()` (PRADO 4.4) supplies its own reader,
+	 * so a driver that is not a {@see TDbConnection} resolves its metadata class.
+	 * Otherwise the reader comes from {@see TDbMetaData::getInstance()}.
+	 * @param IDataConnection $connection database connection
+	 * @return \Prado\Data\Common\IDataMetaData|TDbMetaData meta data reader for the connection.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	protected function createMetaData(IDataConnection $connection)
+	{
+		if (method_exists($connection, 'getDbMetaData')) {
+			return $connection->getDbMetaData();
+		}
+		return TDbMetaData::getInstance($connection);
 	}
 
 	/**
@@ -307,6 +363,15 @@ class TActiveRecordGateway extends \Prado\TComponent
 		return $this->getCommand($record)->findAllBySql($criteria);
 	}
 
+	/**
+	 * Returns the number of records matching the given index fields and values.
+	 * Uses SQL clause "(fields) IN (values)" for matching.
+	 * @param TActiveRecord $record active record finder instance.
+	 * @param TActiveRecordCriteria $criteria search criteria.
+	 * @param array $fields field names to match.
+	 * @param array $values matching field values.
+	 * @return int number of records.
+	 */
 	public function findRecordsByIndex(TActiveRecord $record, $criteria, $fields, $values)
 	{
 		return $this->getCommand($record)->findAllByIndex($criteria, $fields, $values);
@@ -362,7 +427,11 @@ class TActiveRecordGateway extends \Prado\TComponent
 	{
 		$values = [];
 		$tableInfo = $this->getCommand($record)->getTableInfo();
-		foreach ($tableInfo->getColumns() as $name => $column) {
+		$columns = $tableInfo->getColumns();
+		if ($this->getIsSchemaless($tableInfo)) {
+			return $this->getRecordPropertyValues($record);
+		}
+		foreach ($columns as $name => $column) {
 			if ($column->getIsExcluded()) {
 				continue;
 			}
@@ -383,6 +452,57 @@ class TActiveRecordGateway extends \Prado\TComponent
 	}
 
 	/**
+	 * Inserts a new record unless it conflicts with an existing key.
+	 * @param TActiveRecord $record new record.
+	 * @throws TActiveRecordException when the data gateway lacks `insertOrIgnore()` (PRADO before 4.4).
+	 * @return mixed the last insert ID, true when the table has no sequence, or false when the row conflicts.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	public function insertOrIgnore(TActiveRecord $record): mixed
+	{
+		$result = $this->getConflictCommand($record, 'insertOrIgnore')->insertOrIgnore($this->getInsertValues($record));
+		if ($result) {
+			$this->updatePostInsert($record);
+		}
+		return $result;
+	}
+
+	/**
+	 * Inserts a record, or updates the existing row it conflicts with.
+	 * @param TActiveRecord $record record to insert or update.
+	 * @param ?array $updateData the update data, as {@see TActiveRecord::upsert()} describes it.
+	 * @param ?array $conflictColumns the conflict target columns; null targets the primary key.
+	 * @throws TActiveRecordException when the data gateway lacks `upsert()` (PRADO before 4.4).
+	 * @return mixed the last insert ID, true when no ID is available, or false when nothing is written.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	public function upsert(TActiveRecord $record, ?array $updateData = null, ?array $conflictColumns = null): mixed
+	{
+		$result = $this->getConflictCommand($record, 'upsert')->upsert($this->getInsertValues($record), $updateData, $conflictColumns);
+		if ($result) {
+			$this->updatePostInsert($record);
+		}
+		return $result;
+	}
+
+	/**
+	 * Returns the record's command after checking that it provides a conflict-handling method.
+	 * @param TActiveRecord $record the record to write.
+	 * @param string $method `insertOrIgnore` or `upsert`.
+	 * @throws TActiveRecordException when the command lacks the method (PRADO before 4.4).
+	 * @return TDataGatewayCommand the record's command.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	protected function getConflictCommand(TActiveRecord $record, string $method)
+	{
+		$command = $this->getCommand($record);
+		if (!method_exists($command, $method)) {
+			throw new TActiveRecordException('ar_method_requires_data_gateway', $record::class, $method, $command::class);
+		}
+		return $command;
+	}
+
+	/**
 	 * Update the record.
 	 * @param TActiveRecord $record dirty record.
 	 * @return int number of rows affected.
@@ -400,8 +520,23 @@ class TActiveRecordGateway extends \Prado\TComponent
 	{
 		$values = [];
 		$tableInfo = $this->getCommand($record)->getTableInfo();
+		$columns = $tableInfo->getColumns();
 		$primary = [];
-		foreach ($tableInfo->getColumns() as $name => $column) {
+		if ($this->getIsSchemaless($tableInfo)) {
+			// The primary key values come from the metadata's key columns, the rest from the properties.
+			foreach ($columns as $name => $column) {
+				if ($column->getIsPrimaryKey()) {
+					$primary[$name] = $record->getColumnValue($name);
+				}
+			}
+			foreach ($this->getRecordPropertyValues($record) as $name => $value) {
+				if (!isset($primary[$name])) {
+					$values[$name] = $value;
+				}
+			}
+			return [$values, $primary];
+		}
+		foreach ($columns as $name => $column) {
 			if ($column->getIsExcluded()) {
 				continue;
 			}
@@ -421,6 +556,65 @@ class TActiveRecordGateway extends \Prado\TComponent
 			}
 		}
 		return [$values, $primary];
+	}
+
+	/**
+	 * Returns whether a table is schemaless: its metadata is not SQL table information
+	 * and declares no column besides the primary key, as for a document collection
+	 * without a validator. The insert and update values of a schemaless table come
+	 * from {@see getRecordPropertyValues()}.
+	 * @param \Prado\Data\Common\IDataTableInfo $tableInfo the table or collection metadata.
+	 * @return bool true when the values come from the record's properties.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	protected function getIsSchemaless($tableInfo): bool
+	{
+		return !($tableInfo instanceof TDbTableInfo) && !$this->hasWritableColumns($tableInfo->getColumns());
+	}
+
+	/**
+	 * Returns whether the metadata declares a column besides the primary key.
+	 * @param iterable $columns the {@see \Prado\Data\Common\IDataColumn} list.
+	 * @return bool true if at least one non-primary-key column exists.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	protected function hasWritableColumns($columns): bool
+	{
+		foreach ($columns as $column) {
+			if (!$column->getIsPrimaryKey()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Returns the values of a record for a schemaless table ({@see getIsSchemaless()}).
+	 * The values are the record's public properties that are not null and not declared
+	 * in its `$RELATIONS`, keyed by property name.
+	 * @param TActiveRecord $record the record.
+	 * @return array field name => value pairs.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	protected function getRecordPropertyValues(TActiveRecord $record): array
+	{
+		$relations = [];
+		foreach (array_keys((array) $record::$RELATIONS) as $rel) {
+			$relations[strtolower((string) $rel)] = true;
+		}
+		$values = [];
+		// Reflection reads the public properties only; get_object_vars() in this
+		// TComponent would also return the record's protected TComponent state.
+		foreach ((new \ReflectionObject($record))->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
+			$name = $property->getName();
+			if ($property->isStatic() || isset($relations[strtolower($name)])) {
+				continue;
+			}
+			if (($value = $property->getValue($record)) !== null) {
+				$values[$name] = $value;
+			}
+		}
+		return $values;
 	}
 
 	protected function updateAssociatedRecords(TActiveRecord $record, $updateBelongsTo = false)

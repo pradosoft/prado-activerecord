@@ -6,12 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+The Active Record classes follow PRADO's Data layer renovation for 4.4 (pradosoft/prado#1088, the `db-modern-exec` branch), and keep this package's fixes.
+
 ### Added
+
+- `TActiveRecord::insertOrIgnore()` and `upsert($updateData, $conflictColumns)`, the class constants `CONFLICT_COLUMNS` and `UPSERT_UPDATE_DATA` for the defaults of `upsert()`, and `TActiveRecordGateway::insertOrIgnore()` and `upsert()`. Both raise `OnInsert` and return what `insert()` returns. They call `TDataGatewayCommand::insertOrIgnore()` and `upsert()`, which PRADO provides from 4.4 (pradosoft/prado#1088); on an earlier PRADO they throw `TActiveRecordException` `ar_method_requires_data_gateway`. SQL Server, Oracle, DB2, and Firebird build a `MERGE` statement and need an active transaction. The `InsertOrIgnoreTestCase` and `UpsertTestCase` database cases run on every driver over the new `upsert_test` table, and skip on a PRADO before 4.4. See [Record Classes](docs/records.md#insert-or-ignore-and-upsert).
+- Support for stores without foreign key metadata, such as a document store. A relation whose metadata holds no matching key uses the columns it names: `'author_id'` maps to the referenced primary key, and a `MANY_TO_MANY` `'pivot.(sourceFk, foreignFk)'` names both association columns. A `MANY_TO_MANY` relation whose command builder cannot build a join loads with two queries joined in PHP. A table whose metadata is not `TDbTableInfo` and lists no column besides the primary key writes the record's public properties (`TActiveRecordGateway::getIsSchemaless()`).
+- `TSqlSrvScaffoldInput` holds the SQL Server Scaffold inputs. `TMssqlScaffoldInput` is its deprecated subclass, which `createInputBuilder()` still returns for `mssql`, `sqlsrv`, and `dblib`.
 
 - `TOracleScaffoldInput` builds Scaffold inputs for Oracle columns. `TScaffoldInputBase::createInputBuilder()` selects it for the `oci` driver. Ported from PRADO pull request #1369, which landed after the baseline.
 
 ### Changed
 
+- Column names match record properties without regard to case. Firebird, Oracle, and DB2 return upper case column names, which now fill lower case properties without `$COLUMN_MAPPING` entries. `$COLUMN_MAPPING` keys also match without regard to case and take precedence.
+- A record or finder without its own connection uses the manager's current connection. `getDbConnection()` stored the manager's connection on first use, so a finder kept the first connection after the manager's changed. A connection set with `setDbConnection()` is kept.
+- A `MANY_TO_MANY` association table followed by two columns, as in `'player_skills.(player_id, skill_id)'`, names the association column to each side. Since 1.0.0 the two names were association data columns.
+- `TActiveRecordGateway` reads table metadata through the connection's `getDbMetaData()` when the connection provides it (PRADO 4.4), so a driver that is not a `TDbConnection` resolves its metadata class.
+- Finder criteria may be any `IDataCriteria` (PRADO 4.4) besides `TSqlCriteria`. The finder still works on a copy.
+- `TActiveRecord` drops its connection from serialization through `_getZappableSleepProps()`.
+- The tests pass on PRADO 4.4, whose SQLite connection returns native integer types and enforces foreign keys, and whose `IDataConnection` adds `getLastTransaction()`, `commit()`, `rollback()`, and `getDbMetaData()`.
 - `messages.txt` entries are ICU MessageFormat patterns, as PRADO 4.4 formats them (PRADO pull request #1437). A placeholder in quotes is written `''{0}''`; `'{0}'` renders the literal `{0}`. The `ar_primary_key_is_scalar` message closes the quote around the invalid value.
 - The database tests run the composite primary key cases on SQLite and the identity cases on Firebird. PRADO pull request #1360 fixed the SQLite composite key metadata and the Firebird identity read-back, so neither gate remains.
 - The test bootstrap gives the application an unbuffered response. Rendering a form reads the CSRF token, which bootstraps the default response module and its output buffer.

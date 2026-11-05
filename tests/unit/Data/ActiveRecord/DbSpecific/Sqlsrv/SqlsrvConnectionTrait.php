@@ -19,6 +19,6 @@ trait SqlsrvConnectionTrait
 
 	protected function getUnsupportedFeatures(): array
 	{
-		return ['composite_pk_in'];
+		return ['composite_pk_in', 'merge_transaction'];
 	}
 }

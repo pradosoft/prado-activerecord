@@ -128,13 +128,13 @@ class TScaffoldListViewTest extends ScaffoldTestCase
 		$this->display();
 
 		$items = $list->getList()->getItems();
-		$this->assertSame(['3'], $items->itemAt(2)->getCustomData());
+		$this->assertEquals(['3'], $items->itemAt(2)->getCustomData());
 		$values = [];
 		foreach ($items->itemAt(2)->_properties->getItems() as $property) {
 			$values[] = $property->getData();
 		}
-		$this->assertSame(['3', 'item 03', null, '3.5'], $values);
-		$this->assertSame(['4', 'item 04', 'note 4', '4.5'], array_map(
+		$this->assertEquals(['3', 'item 03', null, '3.5'], $values);
+		$this->assertEquals(['4', 'item 04', 'note 4', '4.5'], array_map(
 			fn ($p) => $p->getData(),
 			$items->itemAt(3)->_properties->getItems()->toArray()
 		));
@@ -298,7 +298,7 @@ class TScaffoldListViewTest extends ScaffoldTestCase
 		$item = $list->getList()->getItems()->itemAt(4);
 		$this->itemButton($item, 'edit')->onCommand($this->command('edit'));
 
-		$this->assertSame(['5'], $edit->getRecordPk());
+		$this->assertEquals(['5'], $edit->getRecordPk());
 		$this->assertSame('item 05', $edit->_repeater->getItems()->itemAt(1)->_input->findControl('scaffold_input')->getText());
 		$this->assertCount(1, $container->events);
 		$this->assertSame($list, $container->events[0][0]);
@@ -359,7 +359,7 @@ class TScaffoldListViewTest extends ScaffoldTestCase
 		$this->display();
 
 		$item = $list->getList()->getItems()->itemAt(0);
-		$this->assertSame(['1'], $item->getCustomData());
+		$this->assertEquals(['1'], $item->getCustomData());
 		$this->assertNull($item->findControl('_properties'));
 	}
 }

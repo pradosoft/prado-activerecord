@@ -10,7 +10,7 @@ Active Record raises five events. Three change events run before a write and can
 
 | Event | Raised on | Parameter | When |
 |---|---|---|---|
-| `OnInsert` | the record | `TActiveRecordChangeEventParameter` | `save()` on a new record, before the `INSERT` |
+| `OnInsert` | the record | `TActiveRecordChangeEventParameter` | `save()` on a new record, `insertOrIgnore()`, and `upsert()`, before the statement |
 | `OnUpdate` | the record | `TActiveRecordChangeEventParameter` | `save()` on a loaded record, before the `UPDATE` |
 | `OnDelete` | the record | `TActiveRecordChangeEventParameter` | `delete()`, before the `DELETE` |
 | `OnCreateCommand` | the gateway, then the record that made the call | `TDataGatewayEventParameter` | after the command is built and its parameters are bound, before it runs |

@@ -250,7 +250,7 @@ The condition comes from the command builder's `getSearchExpression()`: the text
 | `mysql`, `mysqli` | `TMysqlScaffoldInput` |
 | `sqlite`, `sqlite2` | `TSqliteScaffoldInput` |
 | `pgsql` | `TPgsqlScaffoldInput` |
-| `mssql`, `sqlsrv`, `dblib` | `TMssqlScaffoldInput` |
+| `mssql`, `sqlsrv`, `dblib` | `TMssqlScaffoldInput`, a deprecated subclass of `TSqlSrvScaffoldInput` |
 | `ibm` | `TIbmScaffoldInput` |
 | `firebird`, `interbase` | `TFirebirdScaffoldInput` |
 | `oci` | `TOracleScaffoldInput` |
@@ -279,12 +279,12 @@ The other builders compare the column type name reported by their database:
 |---|---|---|---|---|---|---|---|
 | `TSqliteScaffoldInput` | `boolean` | `int`, `integer`, `tinyint`, `smallint`, `mediumint`, `bigint` | `decimal`, `double`, `float` | `date` | `time` | `datetime`, `timestamp` | `text` and `blob` variants; `year` gives the year list |
 | `TPgsqlScaffoldInput` | `boolean` | `smallint`, `integer`, `bigint` | `decimal`, `numeric`, `real`, `double precision` | `date` | `time without time zone` | `timestamp without time zone` | `text` |
-| `TMssqlScaffoldInput` | `bit` | `smallint`, `int`, `bigint`, `tinyint` | `decimal`, `float`, `money`, `numeric`, `real`, `smallmoney` | | | `datetime`, `smalldatetime` | `text` |
+| `TSqlSrvScaffoldInput` | `bit` | `smallint`, `int`, `bigint`, `tinyint` | `decimal`, `float`, `money`, `numeric`, `real`, `smallmoney` | | | `datetime`, `smalldatetime` | `text` |
 | `TIbmScaffoldInput` | | `smallint`, `integer`, `bigint` | `decimal`, `numeric`, `real`, `float`, `double` | `date` | `time` | `timestamp` | `char`, `varchar` |
 | `TFirebirdScaffoldInput` | `BOOLEAN` | `SMALLINT`, `INTEGER`, `BIGINT` | `FLOAT`, `DOUBLE PRECISION`, `DECIMAL`, `NUMERIC`, `DECFLOAT(16)`, `DECFLOAT(34)` | `DATE` | `TIME`, `TIME WITH TIME ZONE` | `TIMESTAMP`, `TIMESTAMP WITH TIME ZONE` | `CHAR`, `VARCHAR`, `TEXT`, `BLOB` |
 | `TOracleScaffoldInput` | `BOOLEAN` | `INTEGER`, `INT`, `SMALLINT`; `NUMBER`, `DECIMAL`, `NUMERIC` with scale 0 | `NUMBER`, `DECIMAL`, `NUMERIC` with another or no scale; `FLOAT`, `BINARY_FLOAT`, `BINARY_DOUBLE`, `REAL`, `DOUBLE PRECISION` | | | `DATE`, `TIMESTAMP`, `TIMESTAMP WITH TIME ZONE`, `TIMESTAMP WITH LOCAL TIME ZONE` | `CLOB`, `NCLOB`, `LONG`, `BLOB` |
 
-Any other type gives the plain `TTextBox`. `TMssqlScaffoldInput` disables the text box for excluded columns and stores an empty text box as `NULL` when the column allows it.
+Any other type gives the plain `TTextBox`. `TSqlSrvScaffoldInput` disables the text box for excluded columns and stores an empty text box as `NULL` when the column allows it.
 
 The primary input of each item has the ID `scaffold_input` (`IScaffoldInput::DEFAULT_ID`) and the label's `ForControl` points at it.
 

@@ -117,6 +117,17 @@ CREATE TABLE player_skills (
 );
 ```
 
+### Tables without foreign key metadata
+
+A store whose metadata lists no foreign keys, such as a document store or a table created without constraints, relates records through the columns the relation names.
+
+| Relation | Index 2 | Key |
+|---|---|---|
+| `HAS_MANY`, `HAS_ONE`, `BELONGS_TO` | `'author_id'` | the named column, matched to the primary key of the referenced table by position |
+| `MANY_TO_MANY` | `'post_tags.(post_id, tag_id)'` | the association column to this record's table, then the one to the related table; each matches a single-column primary key |
+
+The metadata keys take precedence; the named columns apply when the metadata holds no matching key. A command builder that cannot build a join, as for a document store, loads `MANY_TO_MANY` records with two queries joined in PHP: the association rows, then the related rows.
+
 ---
 
 ## Declared and Undeclared Relation Properties
@@ -142,7 +153,7 @@ $players = PlayerRecord::finder()->withTeam()->withSkills()->findAll('age < ?', 
 
 - The relation name after `with` is case-insensitive and may follow one underscore.
 - Chained `with` calls each run one query after the finder returns. The example above runs three queries: players, teams, skills.
-- `HAS_MANY`, `HAS_ONE`, and `BELONGS_TO` load with `(columns) IN (values)` through `findAllByIndex()`. `MANY_TO_MANY` loads with an `INNER JOIN` on the association table.
+- `HAS_MANY`, `HAS_ONE`, and `BELONGS_TO` load with `(columns) IN (values)` through `findAllByIndex()`. `MANY_TO_MANY` loads with an `INNER JOIN` on the association table, or with two queries when the command builder cannot build a join.
 - Every result row of the main query is kept, with or without related rows. There is no outer join and no aggregate across tables.
 
 ### Criteria for the related query
@@ -229,7 +240,7 @@ class Category extends TActiveRecord
 $category = Category::finder()->withChild_Categories()->withParent_Category()->findByPk(2);
 ```
 
-A self-referencing `MANY_TO_MANY` association table has two constraints to the same table. Append the column that points at the related side to the association table name, and declare that column as a property on the record class. The handler stores the association column value in it.
+A self-referencing `MANY_TO_MANY` association table has two constraints to the same table. Append the column that points at the related side to the association table name, and declare that column as a property on the record class. The handler stores the association column value in it. Naming both columns, as in `'related_items.(item_id, related_item_id)'`, also picks the related side; the handler then stores no association value.
 
 ```sql
 CREATE TABLE related_items (

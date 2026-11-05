@@ -241,7 +241,7 @@ vendor/bin/phpunit --testsuite db-sqlite --filter test_has_many
 
 ### Database test setup
 
-The database cases (finders, criteria, counts, deletes, dynamic finders, record save and delete, auto-increment keys, events) are written once as abstract classes under `tests/unit/Data/ActiveRecord/DbSpecific/Cases/`. Each driver directory runs every case through its connection trait, which names the `PradoUnit::setup*Connection()` helper, the database, the connection settings, and the features the driver lacks; a test that needs a missing feature is skipped with the reason. The schema for each driver is `tests/unit/Data/ActiveRecord/scripts/<driver>/database.sql`, loaded in CI by `.github/scripts/setup-<driver>.sh`. A test class whose server or table is missing fails its first test and skips the rest.
+The database cases (finders, criteria, counts, deletes, dynamic finders, record save and delete, insert or ignore and upsert, auto-increment keys, events) are written once as abstract classes under `tests/unit/Data/ActiveRecord/DbSpecific/Cases/`. Each driver directory runs every case through its connection trait, which names the `PradoUnit::setup*Connection()` helper, the database, the connection settings, and the features the driver lacks; a test that needs a missing feature is skipped with the reason. The schema for each driver is `tests/unit/Data/ActiveRecord/scripts/<driver>/database.sql`, loaded in CI by `.github/scripts/setup-<driver>.sh`. A test class whose server or table is missing fails its first test and skips the rest.
 
 The `db-sqlite` suite builds its database from the SQLite script in the system temporary directory and needs only `pdo_sqlite`; the relation tests read the committed files in `tests/unit/Data/ActiveRecord/sqlite/`.
 

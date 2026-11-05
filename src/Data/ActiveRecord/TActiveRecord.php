@@ -14,12 +14,16 @@ use Prado\Data\TDbConnection;
 use Prado\Data\Common\TDbTableInfo;
 use Prado\Data\ActiveRecord\Exceptions\TActiveRecordException;
 use Prado\Data\ActiveRecord\Relations\TActiveRecordRelationContext;
+use Prado\Data\DataGateway\IDataCriteria;
 use Prado\Data\DataGateway\TSqlCriteria;
 use Prado\Prado;
 use Prado\TPropertyValue;
 use Prado\Util\Traits\TReflectionClassTrait;
+use ReflectionProperty;
 
 /**
+ * TActiveRecord class
+ *
  * Base class for active records.
  *
  * An active record creates an object that wraps a row in a database table
@@ -143,6 +147,42 @@ use Prado\Util\Traits\TReflectionClassTrait;
  * }
  * ```
  *
+ * {@see insertOrIgnore()} inserts the record unless the row conflicts with an
+ * existing key, and {@see upsert()} inserts the record or updates the conflicting row.
+ * Both raise OnInsert, return what the data gateway's `insert()` returns, and mark the
+ * record loaded when a row is written.
+ * ```php
+ * $user = new UserRecord(['username' => 'admin', 'email' => 'admin@example.com']);
+ * $user->insertOrIgnore();                            // false when 'admin' exists
+ * $user->upsert();                                    // updates every other column on conflict
+ * $user->upsert(['email']);                           // updates email from the record
+ * $user->upsert(['email' => 'x@example.com']);        // updates email to the given value
+ * $user->upsert(['email', 'status' => 'active']);     // both forms together
+ * $user->upsert(null, ['username']);                  // conflicts on username, not the primary key
+ * ```
+ * A record class sets the defaults of {@see upsert()} with two constants:
+ * ```php
+ * class UserRecord extends TActiveRecord
+ * {
+ *     const TABLE = 'users';
+ *     const CONFLICT_COLUMNS = ['email'];           // conflict target in place of the primary key
+ *     const UPSERT_UPDATE_DATA = ['last_login'];    // columns a conflict updates
+ *     public $id;
+ *     public $email;
+ *     public $last_login;
+ *     public $status;
+ * }
+ * $user->upsert();                                  // conflicts on email, updates last_login
+ * $user->upsert(['status' => 'active']);            // updates last_login and status
+ * $user->upsert(null, ['id']);                      // conflicts on the primary key
+ * ```
+ * SQL Server, Oracle, DB2, and Firebird build a MERGE statement and require an active
+ * transaction. Both methods need the PRADO 4.4 data gateway.
+ *
+ * Column names match properties without regard to case, so a driver that returns
+ * upper case column names, such as Firebird, Oracle, and DB2, fills lower case
+ * properties. `$COLUMN_MAPPING` entries take precedence.
+ *
  * @author Wei Zhuo <weizho[at]gmail[dot]com>
  * @since 3.1
  */
@@ -160,6 +200,22 @@ abstract class TActiveRecord extends \Prado\TComponent
 	public const STATE_DELETED = 2;
 
 	/**
+	 * Default conflict target of {@see upsert()}; null targets the primary key.
+	 * A record class overrides it to target another unique constraint.
+	 * A non-null `$conflictColumns` argument replaces it.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	public const CONFLICT_COLUMNS = null;
+
+	/**
+	 * Default update data of {@see upsert()}; null updates every non-conflict column from the record.
+	 * A non-null `$updateData` argument is merged over it with `array_merge()`: the
+	 * argument's string keys replace the constant's, and the constant's column names stay.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	public const UPSERT_UPDATE_DATA = null;
+
+	/**
 	 * @var int record state: 0 = new, 1 = loaded, 2 = deleted.
 	 * @since 3.1.2
 	 */
@@ -174,6 +230,11 @@ abstract class TActiveRecord extends \Prado\TComponent
 	 * @since 3.1.1
 	 */
 	public static $COLUMN_MAPPING = [];
+	/**
+	 * @var array<string, array<string, string>> per class, the property name of each
+	 *   lower case column name: every public instance property, then the
+	 *   {@see $COLUMN_MAPPING} entries, which take precedence.
+	 */
 	private static $_columnMapping = [];
 
 	/**
@@ -192,7 +253,7 @@ abstract class TActiveRecord extends \Prado\TComponent
 	protected $_relationsObjs = [];
 
 	/**
-	 * @var TDbConnection database connection object.
+	 * @var \Prado\Data\IDataConnection database connection object.
 	 */
 	protected $_connection; // use protected so that serialization is fine
 
@@ -206,11 +267,13 @@ abstract class TActiveRecord extends \Prado\TComponent
 	protected $_invalidFinderResult; // use protected so that serialization is fine
 
 	/**
-	 * Prevent __call() method creating __sleep() when serializing.
+	 * Excludes the database connection from serialization.
+	 * @param array $exprops by reference, the properties to exclude.
 	 */
-	public function __sleep()
+	protected function _getZappableSleepProps(&$exprops)
 	{
-		return array_diff(parent::__sleep(), ["\0*\0_connection"]);
+		parent::_getZappableSleepProps($exprops);
+		$exprops[] = "\0*\0_connection";
 	}
 
 	/**
@@ -228,7 +291,7 @@ abstract class TActiveRecord extends \Prado\TComponent
 	 * can be saved to the database specified by the $connection object.
 	 *
 	 * @param array $data optional name value pair record data.
-	 * @param null|TDbConnection $connection optional database connection this object record use.
+	 * @param null|\Prado\Data\IDataConnection $connection optional database connection this object record use.
 	 */
 	public function __construct($data = [], $connection = null)
 	{
@@ -268,7 +331,7 @@ abstract class TActiveRecord extends \Prado\TComponent
 
 	/**
 	 * Magic method for writing properties.
-	 * This method is overriden to provide write access to the foreign objects via
+	 * This method is overridden to provide write access to the foreign objects via
 	 * the key names declared in the RELATIONS array.
 	 * @param string $name property name
 	 * @param mixed $value property value.
@@ -323,7 +386,19 @@ abstract class TActiveRecord extends \Prado\TComponent
 		$className = $this::class;
 		if (!isset(self::$_columnMapping[$className])) {
 			$class = static::getReflectionClass();
-			self::$_columnMapping[$className] = $class->getStaticPropertyValue('COLUMN_MAPPING');
+			// Every public instance property, keyed by its lower case name.
+			$map = [];
+			foreach ($class->getProperties(ReflectionProperty::IS_PUBLIC) as $prop) {
+				if (!$prop->isStatic()) {
+					$name = $prop->getName();
+					$map[strtolower($name)] = $name;
+				}
+			}
+			// COLUMN_MAPPING entries take precedence.
+			foreach ($class->getStaticPropertyValue('COLUMN_MAPPING') as $col => $prop) {
+				$map[strtolower($col)] = $prop;
+			}
+			self::$_columnMapping[$className] = $map;
 		}
 	}
 
@@ -344,9 +419,11 @@ abstract class TActiveRecord extends \Prado\TComponent
 	}
 
 	/**
-	 * Copies data from an array or another object.
-	 * @param mixed $data
-	 * @throws TActiveRecordException if data is not array or not object.
+	 * Copies data from an array or another object into the record.
+	 * If $data is an object, its public properties are extracted.
+	 * Each key-value pair is set using {@see setColumnValue()}.
+	 * @param mixed $data associative array or object with public properties.
+	 * @throws TActiveRecordException if data is not array or object.
 	 */
 	public function copyFrom($data)
 	{
@@ -361,7 +438,11 @@ abstract class TActiveRecord extends \Prado\TComponent
 		}
 	}
 
-
+	/**
+	 * Returns the default connection of the TActiveRecordManager.
+	 * @throws TActiveRecordException when the manager has no connection.
+	 * @return \Prado\Data\IDataConnection current db connection.
+	 */
 	public static function getActiveDbConnection()
 	{
 		if (($db = self::getRecordManager()->getDbConnection()) !== null) {
@@ -371,20 +452,18 @@ abstract class TActiveRecord extends \Prado\TComponent
 	}
 
 	/**
-	 * Gets the current Db connection, the connection object is obtained from
-	 * the TActiveRecordManager if connection is currently null.
-	 * @return \Prado\Data\TDbConnection current db connection for this object.
+	 * Gets the current Db connection. A record without its own connection uses the
+	 * current connection of the TActiveRecordManager, so a finder follows a change
+	 * of the manager's connection.
+	 * @return \Prado\Data\IDataConnection current db connection for this object.
 	 */
 	public function getDbConnection()
 	{
-		if ($this->_connection === null) {
-			$this->_connection = self::getActiveDbConnection();
-		}
-		return $this->_connection;
+		return $this->_connection ?? self::getActiveDbConnection();
 	}
 
 	/**
-	 * @param \Prado\Data\TDbConnection $connection db connection object for this record.
+	 * @param \Prado\Data\IDataConnection $connection db connection object for this record.
 	 */
 	public function setDbConnection($connection)
 	{
@@ -521,6 +600,63 @@ abstract class TActiveRecord extends \Prado\TComponent
 	}
 
 	/**
+	 * Inserts the current record unless it conflicts with an existing key.
+	 * OnInsert is raised first and can cancel the insert. A written row marks the record loaded.
+	 * @return mixed the last insert ID, true when the table has no sequence, or false when
+	 *   the row conflicts or OnInsert cancels it.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	public function insertOrIgnore(): mixed
+	{
+		$param = new TActiveRecordChangeEventParameter();
+		$this->onInsert($param);
+		if ($param->getIsValid()) {
+			$result = $this->getRecordGateway()->insertOrIgnore($this);
+			if ($result !== false) {
+				$this->_recordState = self::STATE_LOADED;
+				return $result;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Inserts the current record, or updates the existing row it conflicts with.
+	 * OnInsert is raised on both paths and can cancel the write. A written row marks the record loaded.
+	 *
+	 * `$updateData` selects what a conflict updates:
+	 * - null → every non-conflict column, from the record
+	 * - list of column names → those columns, from the record
+	 * - column => value map → those columns, to the given values
+	 * - both forms in one array → each entry as above
+	 * - `[]` → nothing; the call behaves as {@see insertOrIgnore()}
+	 *
+	 * @param ?array $updateData the update data, merged over {@see UPSERT_UPDATE_DATA}.
+	 * @param ?array $conflictColumns the conflict target; null uses {@see CONFLICT_COLUMNS},
+	 *   then the primary key.
+	 * @return mixed the last insert ID, true when no ID is available, or false when nothing
+	 *   is written or OnInsert cancels it.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	public function upsert(?array $updateData = null, ?array $conflictColumns = null): mixed
+	{
+		$conflictColumns ??= static::CONFLICT_COLUMNS;
+		if (static::UPSERT_UPDATE_DATA !== null) {
+			$updateData = $updateData === null ? static::UPSERT_UPDATE_DATA : array_merge(static::UPSERT_UPDATE_DATA, $updateData);
+		}
+		$param = new TActiveRecordChangeEventParameter();
+		$this->onInsert($param);
+		if ($param->getIsValid()) {
+			$result = $this->getRecordGateway()->upsert($this, $updateData, $conflictColumns);
+			if ($result !== false) {
+				$this->_recordState = self::STATE_LOADED;
+				return $result;
+			}
+		}
+		return false;
+	}
+
+	/**
 	 * Delete records by primary key. Usage:
 	 *
 	 * ```php
@@ -638,7 +774,7 @@ abstract class TActiveRecord extends \Prado\TComponent
 	 * ```
 	 *
 	 * @param string|TActiveRecordCriteria $criteria SQL condition or criteria object.
-	 * @param mixed $parameters parameter values.
+	 * @param mixed $parameters parameter values; passing `null` sets the first SQL parameter to null, not an empty list; use `[]` or omit to pass no parameters.
 	 * @return TActiveRecord matching record object. Null if no result is found.
 	 */
 	public function find($criteria, $parameters = [])
@@ -654,7 +790,7 @@ abstract class TActiveRecord extends \Prado\TComponent
 	 * Same as find() but returns an array of objects.
 	 *
 	 * @param string|TActiveRecordCriteria $criteria SQL condition or criteria object.
-	 * @param mixed $parameters parameter values.
+	 * @param mixed $parameters parameter values; passing `null` sets the first SQL parameter to null, not an empty list; use `[]` or omit to pass no parameters.
 	 * @return array matching record objects. Empty array if no result is found.
 	 */
 	public function findAll($criteria = null, $parameters = [])
@@ -771,7 +907,7 @@ abstract class TActiveRecord extends \Prado\TComponent
 	/**
 	 * Find the number of records.
 	 * @param string|TActiveRecordCriteria $criteria SQL condition or criteria object.
-	 * @param mixed $parameters parameter values.
+	 * @param mixed $parameters parameter values; passing `null` sets the first SQL parameter to null, not an empty list; use `[]` or omit to pass no parameters.
 	 * @return int number of records.
 	 */
 	public function count($criteria = null, $parameters = [])
@@ -972,7 +1108,9 @@ abstract class TActiveRecord extends \Prado\TComponent
 		if (is_string($criteria)) {
 			$useArgs = !is_array($parameters) && is_array($args);
 			return new TActiveRecordCriteria($criteria, $useArgs ? $args : $parameters);
-		} elseif ($criteria instanceof TSqlCriteria) {
+		} elseif ($criteria instanceof TSqlCriteria || $criteria instanceof IDataCriteria) {
+			// Any driver's criteria passes through: TSqlCriteria for SQL, a document
+			// store's own criteria class for its driver. The copy leaves the caller's unchanged.
 			return clone $criteria;
 		} else {
 			return new TActiveRecordCriteria();
@@ -1053,8 +1191,8 @@ abstract class TActiveRecord extends \Prado\TComponent
 	public function getColumnValue($columnName)
 	{
 		$className = $this::class;
-		if (isset(self::$_columnMapping[$className][$columnName])) {
-			$columnName = self::$_columnMapping[$className][$columnName];
+		if (isset(self::$_columnMapping[$className][$lower = strtolower($columnName)])) {
+			$columnName = self::$_columnMapping[$className][$lower];
 		}
 		return $this->$columnName;
 	}
@@ -1069,8 +1207,8 @@ abstract class TActiveRecord extends \Prado\TComponent
 	public function setColumnValue($columnName, $value)
 	{
 		$className = $this::class;
-		if (isset(self::$_columnMapping[$className][$columnName])) {
-			$columnName = self::$_columnMapping[$className][$columnName];
+		if (isset(self::$_columnMapping[$className][$lower = strtolower($columnName)])) {
+			$columnName = self::$_columnMapping[$className][$lower];
 		}
 		$this->$columnName = $value;
 	}
@@ -1107,8 +1245,8 @@ abstract class TActiveRecord extends \Prado\TComponent
 	}
 
 	/**
-	 * Return record data as array
-	 * @return array of column name and column values
+	 * Returns record data as an associative array of column name => column value.
+	 * @return array associative array of column name => column value.
 	 * @since 3.2.4
 	 */
 	public function toArray()
@@ -1122,8 +1260,8 @@ abstract class TActiveRecord extends \Prado\TComponent
 	}
 
 	/**
-	 * Return record data as JSON
-	 * @return false|string json
+	 * Returns record data as a JSON string.
+	 * @return false|string JSON string, or false on failure.
 	 * @since 3.2.4
 	 */
 	public function toJSON()

@@ -13,10 +13,15 @@ namespace Prado\Data\ActiveRecord\Relations;
 /**
  * Loads base active record relations class.
  */
+use Prado\Data\ActiveRecord\Exceptions\TActiveRecordException;
 use Prado\Data\ActiveRecord\TActiveRecord;
+use Prado\Data\Common\IDbCommandBuilder;
+use Prado\Data\Common\TDbCommandBuilder;
 use Prado\Prado;
 
 /**
+ * TActiveRecordHasManyAssociation class
+ *
  * Implements the M-N (many to many) relationship via association table.
  * Consider the <b>entity</b> relationship between Articles and Categories
  * via the association table <tt>Article_Category</tt>.
@@ -87,6 +92,12 @@ class TActiveRecordHasManyAssociation extends TActiveRecordRelation
 	private $_sourceTable;
 	private $_foreignTable;
 	private $_association_columns = [];
+	/** @var ?string pivot column referencing the source, declared as the first
+	 *   column of a two-column `pivot.(sourceFk, foreignFk)` association spec. */
+	private $_sourceFkColumn;
+	/** @var ?string pivot column referencing the foreign table, declared as the
+	 *   second column of a two-column `pivot.(sourceFk, foreignFk)` spec. */
+	private $_foreignFkColumn;
 
 	/**
 	 * Get the foreign key index values from the results and make calls to the
@@ -108,37 +119,93 @@ class TActiveRecordHasManyAssociation extends TActiveRecordRelation
 
 	/**
 	 * Returns the association table keys to the source table and to the foreign table.
-	 * The source keys exclude the association columns named in the relation. The
-	 * foreign keys exclude the source key columns. A self-referencing relation, whose
-	 * association table holds two keys to the same table, resolves to two different keys.
+	 * The keys come from the association table's foreign key metadata. The source keys
+	 * exclude the columns {@see getSourceKeyExclusions()} lists. The foreign keys exclude
+	 * the source key columns. A self-referencing relation, whose association table holds
+	 * two keys to the same table, resolves to two different keys.
 	 *
-	 * | Self-referencing relation | Source keys                    | Foreign keys |
-	 * |---------------------------|--------------------------------|--------------|
-	 * | `'links.target_id'`       | the key other than `target_id` | `target_id`  |
-	 * | `'links'`                 | first key in metadata order    | second key   |
+	 * | Self-referencing relation           | Source keys                    | Foreign keys |
+	 * |-------------------------------------|--------------------------------|--------------|
+	 * | `'links.target_id'`                 | the key other than `target_id` | `target_id`  |
+	 * | `'links.(source_id, target_id)'`    | `source_id`                    | `target_id`  |
+	 * | `'links'`                           | first key in metadata order    | second key   |
 	 *
 	 * The metadata order of keys differs between drivers. Name the foreign column in a
-	 * self-referencing relation.
+	 * self-referencing relation. When the metadata holds no foreign keys, as in a
+	 * document store, the two columns of a `'pivot.(sourceFk, foreignFk)'` relation
+	 * map to the primary keys of the source and foreign tables
+	 * ({@see buildDeclaredAssociationKeys()}).
+	 * @throws TActiveRecordException when the metadata holds no matching foreign key
+	 *   and the relation does not name both association columns.
 	 * @return array 2 arrays of source keys and foreign keys from the association table.
 	 */
 	public function getRelationForeignKeys()
 	{
 		$association = $this->getAssociationTable();
-		$sourceKeys = $this->findForeignKeys($association, $this->getSourceRecord(), true, $this->getAssociationColumns());
-		$fkObject = $this->getContext()->getForeignRecordFinder();
-		$foreignKeys = $this->findForeignKeys($association, $fkObject, false, array_keys($sourceKeys));
+		try {
+			$sourceKeys = $this->findForeignKeys($association, $this->getSourceRecord(), true, $this->getSourceKeyExclusions());
+			$fkObject = $this->getContext()->getForeignRecordFinder();
+			$foreignKeys = $this->findForeignKeys($association, $fkObject, false, array_keys($sourceKeys));
+			return [$sourceKeys, $foreignKeys];
+		} catch (TActiveRecordException $e) {
+			// Stores with no foreign-key constraint metadata (e.g. a document
+			// store) can declare both pivot foreign-key columns explicitly via
+			// the `pivot.(sourceFk, foreignFk)` association spec.
+			$keys = $this->buildDeclaredAssociationKeys();
+			if ($keys !== null) {
+				return $keys;
+			}
+			throw $e;
+		}
+	}
+
+	/**
+	 * Builds the source and foreign key maps from the two columns of a
+	 * `'pivot.(sourceFk, foreignFk)'` relation. Each column maps to the single
+	 * primary key of the source or foreign table.
+	 * @return ?array `[sourceKeys, foreignKeys]`, or null when the relation does not
+	 *   name both columns or a table has a composite primary key.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	protected function buildDeclaredAssociationKeys(): ?array
+	{
+		$this->getAssociationTable(); // ensure the spec is parsed
+		if ($this->_sourceFkColumn === null || $this->_foreignFkColumn === null) {
+			return null;
+		}
+		$sourcePk = array_values($this->getSourceTable()->getPrimaryKeys());
+		$foreignPk = array_values($this->getForeignTable()->getPrimaryKeys());
+		if (count($sourcePk) !== 1 || count($foreignPk) !== 1) {
+			return null;
+		}
+		$sourceKeys = [$this->_sourceFkColumn => $sourcePk[0]];
+		$foreignKeys = [$this->_foreignFkColumn => $foreignPk[0]];
 		return [$sourceKeys, $foreignKeys];
 	}
 
 	/**
-	 * @return string[] association table columns named after the dot in the relation's
-	 *   association table, as in `'player_skills.(player_id, skill_id)'`. Empty when none are named.
+	 * @return string[] the association column named after the dot in the relation's
+	 *   association table, as in `'links.target_id'`. Empty when none or two are named.
 	 * @since 1.0.0 of prado-activerecord
 	 */
 	protected function getAssociationColumns()
 	{
 		$this->getAssociationTable();
 		return $this->_association_columns;
+	}
+
+	/**
+	 * @return string[] association table columns that are not source keys: the named
+	 *   association column, or the foreign column of a `'pivot.(sourceFk, foreignFk)'` relation.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	protected function getSourceKeyExclusions()
+	{
+		$columns = $this->getAssociationColumns();
+		if ($this->_foreignFkColumn !== null) {
+			$columns[] = $this->_foreignFkColumn;
+		}
+		return $columns;
 	}
 
 	/**
@@ -149,11 +216,25 @@ class TActiveRecordHasManyAssociation extends TActiveRecordRelation
 		if ($this->_association === null) {
 			$gateway = $this->getSourceRecord()->getRecordGateway();
 			$conn = $this->getSourceRecord()->getDbConnection();
-			//table name may include the fk column name separated with a dot.
+			//table name may include the fk column name(s) separated with a dot.
 			$table = explode('.', $this->getContext()->getAssociationTable());
 			if (count($table) > 1) {
-				$columns = preg_replace('/^\((.*)\)/', '\1', $table[1]);
-				$this->_association_columns = preg_split('/\s*[, ]\s*/', $columns);
+				$columns = preg_replace('/^\((.*)\)$/', '\1', trim($table[1]));
+				$cols = array_values(array_filter(
+					preg_split('/[\s,]+/', trim($columns)),
+					static fn ($c) => $c !== ''
+				));
+				if (count($cols) >= 2) {
+					// Two-column form: (sourceFk, foreignFk).  These are the pivot
+					// foreign-key columns for schemaless stores; they are kept in
+					// dedicated fields and do NOT populate _association_columns
+					// (which carries extra pivot *data* columns to attach to the
+					// foreign object — a different feature).
+					$this->_sourceFkColumn = $cols[0];
+					$this->_foreignFkColumn = $cols[1];
+				} else {
+					$this->_association_columns = $cols;
+				}
 			}
 			$this->_association = $gateway->getTableInfo($conn, $table[0]);
 		}
@@ -204,18 +285,41 @@ class TActiveRecordHasManyAssociation extends TActiveRecordRelation
 
 
 	/**
-	 * Fetches the foreign objects using TActiveRecord::findAllByIndex()
-	 * @param array $results by reference, original results.
-	 * @param array $foreignKeys field names
-	 * @param array $indexValues foreign key index values.
-	 * @param array $sourceKeys source table column names.
-	 * @param mixed $results
+	 * Fetches the M-N foreign objects.
+	 *
+	 * | Foreign command builder | Fetch |
+	 * |---|---|
+	 * | SQL: {@see IDbCommandBuilder} or {@see TDbCommandBuilder} | one INNER JOIN query, {@see fetchForeignObjectsByJoin()} |
+	 * | any other, such as a document store | association rows, then foreign rows, joined in PHP, {@see fetchForeignObjectsByQueries()} |
+	 *
+	 * @param array $results by reference, original source results.
+	 * @param array $foreignKeys foreign-table column → pivot-column mapping.
+	 * @param array $indexValues source-key tuples used to filter the pivot.
+	 * @param array $sourceKeys pivot-column → source-property mapping.
 	 */
 	protected function fetchForeignObjects(&$results, $foreignKeys, $indexValues, $sourceKeys)
 	{
+		$builder = $this->getForeignCommandBuilder()->getBuilder();
+		if ($builder instanceof IDbCommandBuilder || $builder instanceof TDbCommandBuilder) {
+			$this->fetchForeignObjectsByJoin($results, $foreignKeys, $indexValues, $sourceKeys);
+		} else {
+			$this->fetchForeignObjectsByQueries($results, $foreignKeys, $indexValues, $sourceKeys);
+		}
+	}
+
+	/**
+	 * Loads the M-N foreign objects with one INNER JOIN of the foreign and association tables.
+	 *
+	 * @param array $results by reference, original source results.
+	 * @param array $foreignKeys foreign-table column → pivot-column mapping.
+	 * @param array $indexValues source-key tuples used to filter the join.
+	 * @param array $sourceKeys pivot-column → source-property mapping.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	protected function fetchForeignObjectsByJoin(&$results, $foreignKeys, $indexValues, $sourceKeys)
+	{
 		$criteria = $this->getCriteria();
-		$finder = $this->getContext()->getForeignRecordFinder();
-		$type = $finder::class;
+		$type = $this->getContext()->getForeignRecordFinder()::class;
 		$command = $this->createCommand($criteria, $foreignKeys, $indexValues, $sourceKeys);
 		$srcProps = array_keys($sourceKeys);
 		$collections = [];
@@ -228,6 +332,151 @@ class TActiveRecordHasManyAssociation extends TActiveRecordRelation
 			$collections[$hash][] = $obj;
 		}
 		$this->setResultCollection($results, $collections, array_values($sourceKeys));
+	}
+
+	/**
+	 * Loads the M-N foreign objects with two queries joined in PHP: the association
+	 * rows of the source keys, then the foreign rows those rows reference. A driver
+	 * whose command builder cannot build a join uses it; it needs the builder's
+	 * `createIndexedFindCommand()`.
+	 *
+	 * @param array $results by reference, original source results.
+	 * @param array $foreignKeys foreign-table column → pivot-column mapping.
+	 * @param array $indexValues source-key tuples used to filter the pivot.
+	 * @param array $sourceKeys pivot-column → source-property mapping.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	protected function fetchForeignObjectsByQueries(&$results, $foreignKeys, $indexValues, $sourceKeys)
+	{
+		$srcProps = array_keys($sourceKeys);
+		$pivotRows = $this->fetchPivotRows($srcProps, $indexValues);
+		if (empty($pivotRows)) {
+			$collections = [];
+			$this->setResultCollection($results, $collections, array_values($sourceKeys));
+			return;
+		}
+
+		[$pivotFkCols, $foreignFkCols] = $this->resolvePivotForeignColumns($foreignKeys);
+		$fkTuples = $this->extractDistinctTuples($pivotRows, $pivotFkCols);
+		$foreignByFk = $this->fetchForeignRowsByFk($foreignFkCols, $fkTuples);
+
+		$type = $this->getContext()->getForeignRecordFinder()::class;
+		$hasAssocCols = count($this->_association_columns) > 0;
+		$collections = [];
+		foreach ($pivotRows as $pivotRow) {
+			$hash = $this->getObjectHash($pivotRow, $srcProps);
+			$fkTuple = $this->extractTuple($pivotRow, $pivotFkCols);
+			$key = serialize($fkTuple);
+			if (!isset($foreignByFk[$key])) {
+				continue;
+			}
+			foreach ($foreignByFk[$key] as $foreignRow) {
+				if ($hasAssocCols) {
+					foreach ($this->_association_columns as $assocCol) {
+						$foreignRow[$assocCol] = $pivotRow[$assocCol] ?? null;
+					}
+				}
+				$collections[$hash][] = $this->createFkObject($type, $foreignRow, $foreignKeys);
+			}
+		}
+		$this->setResultCollection($results, $collections, array_values($sourceKeys));
+	}
+
+	/**
+	 * Returns the association rows of the source key values, the first query of {@see fetchForeignObjectsByQueries()}.
+	 * @param array $pivotSourceCols pivot columns referencing source PK.
+	 * @param array $indexValues source-key tuples.
+	 * @return array pivot-table rows.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	protected function fetchPivotRows(array $pivotSourceCols, array $indexValues): array
+	{
+		$pivot = $this->getAssociationTable();
+		$conn = $this->getSourceRecord()->getDbConnection();
+		$builder = $pivot->createCommandBuilder($conn);
+		$cmd = $builder->createIndexedFindCommand(
+			new \Prado\Data\DataGateway\TSqlCriteria(),
+			$pivotSourceCols,
+			$indexValues
+		);
+		return $cmd->query()->readAll();
+	}
+
+	/**
+	 * Returns the association columns that reference the foreign table and the foreign
+	 * columns they reference. A column named in the relation, as in `'links.target_id'`,
+	 * replaces the metadata's association column.
+	 * @param array $foreignKeys foreign-table column → pivot-column mapping.
+	 * @return array two-element tuple: `[pivotFkCols, foreignFkCols]`.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	protected function resolvePivotForeignColumns(array $foreignKeys): array
+	{
+		$hasAssocCols = count($this->_association_columns) > 0;
+		$pivotFkCols = [];
+		$foreignFkCols = [];
+		$i = 0;
+		foreach ($foreignKeys as $ref => $fk) {
+			$pivotFkCols[] = $hasAssocCols ? $this->_association_columns[$i++] : $ref;
+			$foreignFkCols[] = $fk;
+		}
+		return [$pivotFkCols, $foreignFkCols];
+	}
+
+	/**
+	 * Returns the foreign rows whose key columns hold one of the value tuples and that
+	 * match the relation's criteria, the second query of {@see fetchForeignObjectsByQueries()}.
+	 * @param array $foreignFkCols foreign-table column names.
+	 * @param array $fkTuples distinct value tuples to match.
+	 * @return array foreign rows keyed by `serialize(fkTuple)` → list of rows.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	protected function fetchForeignRowsByFk(array $foreignFkCols, array $fkTuples): array
+	{
+		$criteria = $this->getCriteria();
+		$builder = $this->getForeignCommandBuilder()->getBuilder();
+		$cmd = $builder->createIndexedFindCommand($criteria, $foreignFkCols, $fkTuples);
+		$this->getCommandBuilder()->onCreateCommand($cmd, $criteria);
+		$rows = $this->getCommandBuilder()->onExecuteCommand($cmd, $cmd->query())->readAll();
+		$indexed = [];
+		foreach ($rows as $row) {
+			$indexed[serialize($this->extractTuple($row, $foreignFkCols))][] = $row;
+		}
+		return $indexed;
+	}
+
+	/**
+	 * Returns the distinct value-tuples for the given columns across an array
+	 * of rows, preserving insertion order.
+	 * @param array $rows array of column → value rows.
+	 * @param array $columns columns to extract.
+	 * @return array list of value-arrays.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	protected function extractDistinctTuples(array $rows, array $columns): array
+	{
+		$set = [];
+		foreach ($rows as $row) {
+			$tuple = $this->extractTuple($row, $columns);
+			$set[serialize($tuple)] = $tuple;
+		}
+		return array_values($set);
+	}
+
+	/**
+	 * Extracts a column-value tuple from a single row.
+	 * @param array $row column → value row.
+	 * @param array $columns columns to extract in order.
+	 * @return array value tuple.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	protected function extractTuple(array $row, array $columns): array
+	{
+		$tuple = [];
+		foreach ($columns as $col) {
+			$tuple[] = $row[$col] ?? null;
+		}
+		return $tuple;
 	}
 
 	/**
@@ -252,6 +501,7 @@ class TActiveRecordHasManyAssociation extends TActiveRecordRelation
 	}
 
 	/**
+	 * Builds the INNER JOIN command of {@see fetchForeignObjectsByJoin()}.
 	 * @param \Prado\Data\DataGateway\TSqlCriteria $criteria
 	 * @param array $foreignKeys field names
 	 * @param array $indexValues field values

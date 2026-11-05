@@ -16,6 +16,7 @@
 	"TPgsqlScaffoldInput": "Prado\\Data\\ActiveRecord\\Scaffold\\InputBuilder\\TPgsqlScaffoldInput",
 	"TScaffoldInputBase": "Prado\\Data\\ActiveRecord\\Scaffold\\InputBuilder\\TScaffoldInputBase",
 	"TScaffoldInputCommon": "Prado\\Data\\ActiveRecord\\Scaffold\\InputBuilder\\TScaffoldInputCommon",
+	"TSqlSrvScaffoldInput": "Prado\\Data\\ActiveRecord\\Scaffold\\InputBuilder\\TSqlSrvScaffoldInput",
 	"TSqliteScaffoldInput": "Prado\\Data\\ActiveRecord\\Scaffold\\InputBuilder\\TSqliteScaffoldInput",
 	"IScaffoldEditRenderer": "Prado\\Data\\ActiveRecord\\Scaffold\\IScaffoldEditRenderer",
 	"TScaffoldBase": "Prado\\Data\\ActiveRecord\\Scaffold\\TScaffoldBase",

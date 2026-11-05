@@ -20,7 +20,7 @@ trait IbmConnectionTrait
 	protected function getUnsupportedFeatures(): array
 	{
 		// pdo_ibm rejects PDO::PARAM_NULL with "Unknown parameter type".
-		return ['null_parameters', 'composite_pk_in'];
+		return ['null_parameters', 'composite_pk_in', 'merge_transaction'];
 	}
 
 }

@@ -21,7 +21,7 @@ trait OracleConnectionTrait
 	{
 		// TOracleMetaData reports no column as auto-increment (attisserial is always 0),
 		// so the gateway cannot read an identity value back after an insert.
-		return ['identity'];
+		return ['identity', 'merge_transaction'];
 	}
 
 }
