@@ -467,6 +467,7 @@ class TActiveRecordGateway extends \Prado\TComponent
 	/**
 	 * Inserts a new record unless it conflicts with an existing key.
 	 * Conflict columns route the insert through `upsert()` with no update data, which targets them.
+	 * A result of 0, which DB2 returns after a MERGE, is a written row.
 	 * @param TActiveRecord $record new record.
 	 * @param ?array $conflictColumns the conflict target columns; null leaves the target to the driver.
 	 * @return mixed the last insert ID, true when the table has no sequence, or false when the row conflicts.
@@ -477,7 +478,7 @@ class TActiveRecordGateway extends \Prado\TComponent
 		$command = $this->getCommand($record);
 		$values = $this->getInsertValues($record);
 		$result = $conflictColumns === null ? $command->insertOrIgnore($values) : $command->upsert($values, [], $conflictColumns);
-		if ($result) {
+		if ($result !== false) {
 			$this->updatePostInsert($record, $conflictColumns);
 		}
 		return $result;
@@ -494,7 +495,7 @@ class TActiveRecordGateway extends \Prado\TComponent
 	public function upsert(TActiveRecord $record, ?array $updateData = null, ?array $conflictColumns = null): mixed
 	{
 		$result = $this->getCommand($record)->upsert($this->getInsertValues($record), $updateData, $conflictColumns);
-		if ($result) {
+		if ($result !== false) {
 			$this->updatePostInsert($record, $conflictColumns);
 		}
 		return $result;

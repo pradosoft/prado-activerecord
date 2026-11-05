@@ -301,7 +301,7 @@ class TActiveRecordUpsertTest extends \PHPUnit\Framework\TestCase
 			public function upsert($values, $updateData, $conflictColumns)
 			{
 				$this->calls[] = ['upsert', $values, $updateData, $conflictColumns];
-				return true;
+				return 0;
 			}
 
 			public function getLastInsertID()
@@ -320,7 +320,8 @@ class TActiveRecordUpsertTest extends \PHPUnit\Framework\TestCase
 		UpsertPlainRecord::$gateway = $gateway;
 
 		$record = new UpsertPlainRecord(['username' => 'ann']);
-		$this->assertTrue($record->insertOrIgnore(['username']));
+		$this->assertSame(0, $record->insertOrIgnore(['username']));
+		$this->assertSame(TActiveRecord::STATE_LOADED, $record->getRecordState());
 		$this->assertSame(12, $record->id);
 		$plain = new UpsertPlainRecord(['username' => 'ben']);
 		$this->assertTrue($plain->insertOrIgnore());
