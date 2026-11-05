@@ -111,7 +111,7 @@ A table whose metadata implements `IDataSchemalessTableInfo` and reports `isSche
 
 ### Insert or ignore, and upsert
 
-`insertOrIgnore()` inserts the record unless the row conflicts with an existing key. `upsert($updateData = null, $conflictColumns = null)` inserts the record, or updates the row it conflicts with. PRADO's data gateway builds the statement for each driver.
+`insertOrIgnore($conflictColumns = null)` inserts the record unless the row conflicts with an existing key. `upsert($updateData = null, $conflictColumns = null)` inserts the record, or updates the row it conflicts with. PRADO's data gateway builds the statement for each driver.
 
 | `$updateData` | A conflict updates |
 |---|---|
@@ -121,7 +121,7 @@ A table whose metadata implements `IDataSchemalessTableInfo` and reports `isSche
 | `['email', 'status' => 'active']` | both forms |
 | `[]` | nothing; the call behaves as `insertOrIgnore()` |
 
-`$conflictColumns` names the unique columns that detect the conflict; `null` uses the primary key. A record class sets defaults with two constants:
+`$conflictColumns` names the unique columns that detect the conflict; `null` uses the primary key. SQL Server, Oracle, DB2, and Firebird match their `MERGE` on these columns, so a table with an identity primary key needs them. A record class sets defaults with two constants:
 
 | Constant | Default | Use |
 |---|---|---|

@@ -388,17 +388,49 @@ class TActiveRecordGateway extends \Prado\TComponent
 
 	/**
 	 * Sets the last insert ID to the corresponding property of the record if available.
+	 * When the driver reports no ID, the conflict columns find the written row.
 	 * @param TActiveRecord $record record for insertion
+	 * @param ?array $conflictColumns the conflict target columns of an insertOrIgnore() or upsert().
 	 */
-	protected function updatePostInsert($record)
+	protected function updatePostInsert($record, ?array $conflictColumns = null)
 	{
 		$command = $this->getCommand($record);
 		$tableInfo = $command->getTableInfo();
 		foreach ($tableInfo->getColumns() as $name => $column) {
 			if ($column->hasSequence()) {
-				$record->setColumnValue($name, $command->getLastInsertID());
+				$value = $command->getLastInsertID();
+				if (!$value && !empty($conflictColumns)) {
+					$value = $this->findConflictRowValue($record, $conflictColumns, $name);
+				}
+				$record->setColumnValue($name, $value);
 			}
 		}
+	}
+
+	/**
+	 * Reads a column of the row that matches the record's conflict columns.
+	 * DB2 and Firebird report no identity value after a MERGE statement; the written row supplies it.
+	 * @param TActiveRecord $record the written record.
+	 * @param array $conflictColumns the conflict target columns.
+	 * @param string $name the column to read.
+	 * @return mixed the column value, or null when no row matches.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	protected function findConflictRowValue(TActiveRecord $record, array $conflictColumns, string $name): mixed
+	{
+		$command = $this->getCommand($record);
+		$tableInfo = $command->getTableInfo();
+		$conditions = [];
+		$parameters = [];
+		foreach ($conflictColumns as $column) {
+			$conditions[] = $tableInfo->getColumn($column)->getColumnName() . ' = ?';
+			$parameters[] = $record->getColumnValue($column);
+		}
+		$row = $command->find(new TSqlCriteria(implode(' AND ', $conditions), $parameters));
+		if (!is_array($row)) {
+			return null;
+		}
+		return array_change_key_case($row)[strtolower($name)] ?? null;
 	}
 
 	/**
@@ -434,15 +466,19 @@ class TActiveRecordGateway extends \Prado\TComponent
 
 	/**
 	 * Inserts a new record unless it conflicts with an existing key.
+	 * Conflict columns route the insert through `upsert()` with no update data, which targets them.
 	 * @param TActiveRecord $record new record.
+	 * @param ?array $conflictColumns the conflict target columns; null leaves the target to the driver.
 	 * @return mixed the last insert ID, true when the table has no sequence, or false when the row conflicts.
 	 * @since 1.1.0 of prado-activerecord
 	 */
-	public function insertOrIgnore(TActiveRecord $record): mixed
+	public function insertOrIgnore(TActiveRecord $record, ?array $conflictColumns = null): mixed
 	{
-		$result = $this->getCommand($record)->insertOrIgnore($this->getInsertValues($record));
+		$command = $this->getCommand($record);
+		$values = $this->getInsertValues($record);
+		$result = $conflictColumns === null ? $command->insertOrIgnore($values) : $command->upsert($values, [], $conflictColumns);
 		if ($result) {
-			$this->updatePostInsert($record);
+			$this->updatePostInsert($record, $conflictColumns);
 		}
 		return $result;
 	}
@@ -459,7 +495,7 @@ class TActiveRecordGateway extends \Prado\TComponent
 	{
 		$result = $this->getCommand($record)->upsert($this->getInsertValues($record), $updateData, $conflictColumns);
 		if ($result) {
-			$this->updatePostInsert($record);
+			$this->updatePostInsert($record, $conflictColumns);
 		}
 		return $result;
 	}

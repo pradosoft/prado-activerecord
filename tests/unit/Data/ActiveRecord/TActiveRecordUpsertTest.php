@@ -14,9 +14,9 @@ class UpsertStubGateway extends TActiveRecordGateway
 	public array $calls = [];
 	public mixed $result = 7;
 
-	public function insertOrIgnore(TActiveRecord $record): mixed
+	public function insertOrIgnore(TActiveRecord $record, ?array $conflictColumns = null): mixed
 	{
-		$this->calls[] = ['insertOrIgnore'];
+		$this->calls[] = ['insertOrIgnore', $conflictColumns];
 		return $this->result;
 	}
 
@@ -99,6 +99,20 @@ class TActiveRecordUpsertTest extends \PHPUnit\Framework\TestCase
 		$record = new UpsertPlainRecord();
 		$this->assertFalse($record->insertOrIgnore());
 		$this->assertSame(TActiveRecord::STATE_NEW, $record->getRecordState());
+	}
+
+	public function testInsertOrIgnorePassesTheConflictColumns()
+	{
+		(new UpsertPlainRecord())->insertOrIgnore();
+		(new UpsertPlainRecord())->insertOrIgnore(['username']);
+		(new UpsertDefaultsRecord())->insertOrIgnore();
+		(new UpsertDefaultsRecord())->insertOrIgnore(['username']);
+		$this->assertSame([
+			['insertOrIgnore', null],
+			['insertOrIgnore', ['username']],
+			['insertOrIgnore', ['email']],
+			['insertOrIgnore', ['username']],
+		], $this->gateway->calls);
 	}
 
 	public function testCancelledWritesDoNotReachTheGateway()
@@ -220,6 +234,102 @@ class TActiveRecordUpsertTest extends \PHPUnit\Framework\TestCase
 		$this->assertSame([
 			['insert', ['id' => 5, 'username' => 'ann']],
 			['update', ['username' => 'ben', 'email' => null], ['id' => 5]],
+		], $command->calls);
+	}
+
+	public function testConflictWritesTargetTheConflictColumnsAndReadTheIdentityBack()
+	{
+		$column = new class () {
+			public function getIsPrimaryKey()
+			{
+				return true;
+			}
+
+			public function hasSequence()
+			{
+				return true;
+			}
+
+			public function getColumnName()
+			{
+				return '"USERNAME"';
+			}
+		};
+		$tableInfo = new class ($column) implements IDataSchemalessTableInfo {
+			public function __construct(private object $column)
+			{
+			}
+
+			public function isSchemaless(): bool
+			{
+				return true;
+			}
+
+			public function getColumns()
+			{
+				return ['id' => $this->column];
+			}
+
+			public function getColumn($name)
+			{
+				return $this->column;
+			}
+
+			public function getPrimaryKeys()
+			{
+				return ['id'];
+			}
+		};
+		$command = new class ($tableInfo) {
+			public array $calls = [];
+
+			public function __construct(private object $tableInfo)
+			{
+			}
+
+			public function getTableInfo()
+			{
+				return $this->tableInfo;
+			}
+
+			public function insertOrIgnore($values)
+			{
+				$this->calls[] = ['insertOrIgnore', $values];
+				return true;
+			}
+
+			public function upsert($values, $updateData, $conflictColumns)
+			{
+				$this->calls[] = ['upsert', $values, $updateData, $conflictColumns];
+				return true;
+			}
+
+			public function getLastInsertID()
+			{
+				return null;
+			}
+
+			public function find($criteria)
+			{
+				$this->calls[] = ['find', $criteria->getCondition(), $criteria->getParameters()->toArray()];
+				return ['ID' => 12];
+			}
+		};
+		$gateway = new UpsertCommandGateway(new TActiveRecordManager());
+		$gateway->command = $command;
+		UpsertPlainRecord::$gateway = $gateway;
+
+		$record = new UpsertPlainRecord(['username' => 'ann']);
+		$this->assertTrue($record->insertOrIgnore(['username']));
+		$this->assertSame(12, $record->id);
+		$plain = new UpsertPlainRecord(['username' => 'ben']);
+		$this->assertTrue($plain->insertOrIgnore());
+		$this->assertNull($plain->id);
+
+		$this->assertSame([
+			['upsert', ['username' => 'ann'], [], ['username']],
+			['find', '"USERNAME" = ?', ['ann']],
+			['insertOrIgnore', ['username' => 'ben']],
 		], $command->calls);
 	}
 

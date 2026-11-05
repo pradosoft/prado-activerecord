@@ -155,13 +155,14 @@ use ReflectionProperty;
  * ```php
  * $user = new UserRecord(['username' => 'admin', 'email' => 'admin@example.com']);
  * $user->insertOrIgnore();                            // false when 'admin' exists
+ * $user->insertOrIgnore(['email']);                   // false when the email exists
  * $user->upsert();                                    // updates every other column on conflict
  * $user->upsert(['email']);                           // updates email from the record
  * $user->upsert(['email' => 'x@example.com']);        // updates email to the given value
  * $user->upsert(['email', 'status' => 'active']);     // both forms together
  * $user->upsert(null, ['username']);                  // conflicts on username, not the primary key
  * ```
- * A record class sets the defaults of {@see upsert()} with two constants:
+ * A record class sets the defaults of {@see insertOrIgnore()} and {@see upsert()} with two constants:
  * ```php
  * class UserRecord extends TActiveRecord
  * {
@@ -176,6 +177,7 @@ use ReflectionProperty;
  * $user->upsert();                                  // conflicts on email, updates last_login
  * $user->upsert(['status' => 'active']);            // updates last_login and status
  * $user->upsert(null, ['id']);                      // conflicts on the primary key
+ * $user->insertOrIgnore();                          // false when the email exists
  * ```
  * SQL Server, Oracle, DB2, and Firebird build a MERGE statement and require an active
  * transaction.
@@ -201,7 +203,7 @@ abstract class TActiveRecord extends \Prado\TComponent implements IViewDataModel
 	public const STATE_DELETED = 2;
 
 	/**
-	 * Default conflict target of {@see upsert()}; null targets the primary key.
+	 * Default conflict target of {@see insertOrIgnore()} and {@see upsert()}; null targets the primary key.
 	 * A record class overrides it to target another unique constraint.
 	 * A non-null `$conflictColumns` argument replaces it.
 	 * @since 1.1.0 of prado-activerecord
@@ -603,16 +605,23 @@ abstract class TActiveRecord extends \Prado\TComponent implements IViewDataModel
 	/**
 	 * Inserts the current record unless it conflicts with an existing key.
 	 * OnInsert is raised first and can cancel the insert. A written row marks the record loaded.
+	 *
+	 * Conflict columns are required on SQL Server, Oracle, DB2, and Firebird when the primary
+	 * key is an identity column: their MERGE statement matches on columns the record supplies.
+	 *
+	 * @param ?array $conflictColumns the conflict target; null uses {@see CONFLICT_COLUMNS},
+	 *   then any key the driver checks.
 	 * @return mixed the last insert ID, true when the table has no sequence, or false when
 	 *   the row conflicts or OnInsert cancels it.
 	 * @since 1.1.0 of prado-activerecord
 	 */
-	public function insertOrIgnore(): mixed
+	public function insertOrIgnore(?array $conflictColumns = null): mixed
 	{
+		$conflictColumns ??= static::CONFLICT_COLUMNS;
 		$param = new TActiveRecordChangeEventParameter();
 		$this->onInsert($param);
 		if ($param->getIsValid()) {
-			$result = $this->getRecordGateway()->insertOrIgnore($this);
+			$result = $this->getRecordGateway()->insertOrIgnore($this, $conflictColumns);
 			if ($result !== false) {
 				$this->_recordState = self::STATE_LOADED;
 				return $result;

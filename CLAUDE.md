@@ -97,7 +97,7 @@ tests/
     ├── DbSpecific/ActiveRecordDbTestCase.php — base of the database cases: connection per class, finder rebinding, feature gates
     ├── DbSpecific/Cases/        — the database cases, abstract, one per concern (finders, criteria, counts, ...)
     ├── DbSpecific/<Driver>/     — one directory per driver: <Driver>ConnectionTrait plus a thin subclass of every case
-    │                              Mysql, Sqlite, Pgsql, Sqlsrv, Firebird, Oracle, Ibm; Sqlite also holds the relation tests
+    │                              Mysql, Sqlite, Pgsql, SqlSrv, Firebird, Oracle, Ibm; Sqlite also holds the relation tests
     ├── sqlite/                  — fk_tests.db, test1.sqlite, blog.db
     └── scripts/<driver>/database.sql — the same schema per driver; CI loads it through .github/scripts/setup-<driver>.sh
 tests/unit/Shell/Actions/TActiveRecordActionTest.php — unit suite: prado-cli flag parsing over an in-memory SQLite
