@@ -13,7 +13,7 @@ namespace Prado\Data\ActiveRecord\Scaffold\InputBuilder;
  * TSqlSrvScaffoldInput class.
  *
  * Maps Microsoft SQL Server column types to Prado scaffold input controls for the
- * `sqlsrv`, `dblib`, and `mssql` drivers.
+ * `sqlsrv` and `dblib` drivers and the `mssql` extension.
  *
  * | SQL Server type | control |
  * |---|---|

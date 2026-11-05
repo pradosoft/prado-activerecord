@@ -250,7 +250,7 @@ The condition comes from the command builder's `getSearchExpression()`: the text
 | `mysql`, `mysqli` | `TMysqlScaffoldInput` |
 | `sqlite`, `sqlite2` | `TSqliteScaffoldInput` |
 | `pgsql` | `TPgsqlScaffoldInput` |
-| `mssql`, `sqlsrv`, `dblib` | `TMssqlScaffoldInput`, a deprecated subclass of `TSqlSrvScaffoldInput` |
+| `mssql`, `sqlsrv`, `dblib` | `TSqlSrvScaffoldInput` |
 | `ibm` | `TIbmScaffoldInput` |
 | `firebird`, `interbase` | `TFirebirdScaffoldInput` |
 | `oci` | `TOracleScaffoldInput` |

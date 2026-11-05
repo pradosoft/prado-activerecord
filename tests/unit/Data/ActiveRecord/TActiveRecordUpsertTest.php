@@ -3,8 +3,6 @@
 namespace Prado\Test\Unit\Data\ActiveRecord;
 
 use Prado\Data\ActiveRecord\Exceptions\TActiveRecordException;
-use Prado\Data\ActiveRecord\Scaffold\InputBuilder\TMssqlScaffoldInput;
-use Prado\Data\ActiveRecord\Scaffold\InputBuilder\TSqlSrvScaffoldInput;
 use Prado\Data\ActiveRecord\TActiveRecord;
 use Prado\Data\ActiveRecord\TActiveRecordGateway;
 use Prado\Data\ActiveRecord\TActiveRecordManager;
@@ -249,10 +247,5 @@ class TActiveRecordUpsertTest extends \PHPUnit\Framework\TestCase
 		$this->assertSame('ann', $record->getColumnValue('UserName'));
 		$record->setColumnValue('LOGIN', 'ben');
 		$this->assertSame('ben', $record->username);
-	}
-
-	public function testMssqlScaffoldInputIsTheSqlSrvScaffoldInput()
-	{
-		$this->assertInstanceOf(TSqlSrvScaffoldInput::class, new TMssqlScaffoldInput());
 	}
 }

@@ -119,7 +119,7 @@ class TScaffoldInputBaseTest extends \PHPUnit\Framework\TestCase
 		$conn->expects($this->never())->method('raiseEvent');
 
 		$result = TScaffoldInputBase::createInputBuilder($record);
-		$this->assertInstanceOf(\Prado\Data\ActiveRecord\Scaffold\InputBuilder\TMssqlScaffoldInput::class, $result);
+		$this->assertInstanceOf(\Prado\Data\ActiveRecord\Scaffold\InputBuilder\TSqlSrvScaffoldInput::class, $result);
 	}
 
 	public function test_createInputBuilder_valid_ibm_driver()
@@ -178,7 +178,7 @@ class TScaffoldInputBaseTest extends \PHPUnit\Framework\TestCase
 		$record->getDbConnection()->expects($this->never())->method('raiseEvent');
 
 		$result = TScaffoldInputBase::createInputBuilder($record);
-		$this->assertInstanceOf(\Prado\Data\ActiveRecord\Scaffold\InputBuilder\TMssqlScaffoldInput::class, $result);
+		$this->assertInstanceOf(\Prado\Data\ActiveRecord\Scaffold\InputBuilder\TSqlSrvScaffoldInput::class, $result);
 	}
 
 	public function test_createInputBuilder_valid_dblib_driver()
@@ -187,7 +187,7 @@ class TScaffoldInputBaseTest extends \PHPUnit\Framework\TestCase
 		$record->getDbConnection()->expects($this->never())->method('raiseEvent');
 
 		$result = TScaffoldInputBase::createInputBuilder($record);
-		$this->assertInstanceOf(\Prado\Data\ActiveRecord\Scaffold\InputBuilder\TMssqlScaffoldInput::class, $result);
+		$this->assertInstanceOf(\Prado\Data\ActiveRecord\Scaffold\InputBuilder\TSqlSrvScaffoldInput::class, $result);
 	}
 
 	public function test_createInputBuilder_uses_first_class_from_fxActiveRecordScaffoldInputClass()
