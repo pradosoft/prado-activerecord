@@ -288,9 +288,18 @@ Any other type gives the plain `TTextBox`. `TSqlSrvScaffoldInput` disables the t
 
 The primary input of each item has the ID `scaffold_input` (`IScaffoldInput::DEFAULT_ID`) and the label's `ForControl` points at it.
 
-### Supplying a builder for another driver
+### Supplying a builder for another driver or connection
 
-When no built-in builder matches, `createInputBuilder()` raises the global event `fxActiveRecordScaffoldInputClass` on the connection. The sender is the connection and the parameter is the driver name. A handler returns the fully qualified name of a class that implements `IScaffoldInput`. The first non-null return value is instantiated. A returned class that does not implement the interface → `TConfigurationException` `ar_not_input_base`.
+Before it selects a built-in builder, `createInputBuilder()` raises the global event `fxActiveRecordScaffoldInputClass` on the connection. The sender is the connection and the parameter is the driver name. A handler returns the fully qualified name of a class that implements `IScaffoldInput`, or null for a connection it does not serve. The first non-null return value is instantiated.
+
+| Handler results | Builder |
+|---|---|
+| a class implementing `IScaffoldInput` | that class, for any driver name |
+| a value that is not such a class | `TConfigurationException` `ar_not_input_base` |
+| none, built-in driver | the built-in builder for the driver |
+| none, other driver | `TConfigurationException` `ar_invalid_database_driver` |
+
+A data plugin whose connection reuses a built-in driver name (`mysqli`, `sqlsrv`) supplies its own builder this way. Its handler checks the sender's class, so other connections with that driver name keep the built-in builder.
 
 ```php
 use Prado\Data\ActiveRecord\Scaffold\InputBuilder\TScaffoldInputCommon;
