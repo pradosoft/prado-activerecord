@@ -124,4 +124,15 @@ class TSqlSrvScaffoldInputTest extends ScaffoldInputTestCase
 		$this->input($item)->setText($text);
 		$this->assertSame($expected, $this->load($builder, $item, $column, $record));
 	}
+
+	public function testValue_emptyNullableIntegerIsNull()
+	{
+		$column = $this->column('int');
+		$builder = new TSqlSrvScaffoldInput();
+		$record = $this->newRecord(['value' => '5']);
+		$item = $this->build($builder, $column, $record);
+
+		$this->input($item)->setText('');
+		$this->assertNull($this->load($builder, $item, $column, $record));
+	}
 }
