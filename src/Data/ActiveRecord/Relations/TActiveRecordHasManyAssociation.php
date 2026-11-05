@@ -17,7 +17,6 @@ use Prado\Data\ActiveRecord\Exceptions\TActiveRecordException;
 use Prado\Data\ActiveRecord\TActiveRecord;
 use Prado\Data\Common\IDataSchemalessTableInfo;
 use Prado\Data\Common\IDbCommandBuilder;
-use Prado\Data\Common\TDbCommandBuilder;
 use Prado\Prado;
 
 /**
@@ -224,7 +223,7 @@ class TActiveRecordHasManyAssociation extends TActiveRecordRelation
 
 	/**
 	 * Returns whether the association table is schemaless: its metadata implements
-	 * {@see IDataSchemalessTableInfo} (PRADO 4.4) and reports `isSchemaless()`, as a
+	 * {@see IDataSchemalessTableInfo} and reports `isSchemaless()`, as a
 	 * document collection does. Such a table has no foreign key metadata and no join.
 	 * @return bool true when the association table is schemaless.
 	 * @since 1.1.0 of prado-activerecord
@@ -317,7 +316,7 @@ class TActiveRecordHasManyAssociation extends TActiveRecordRelation
 	 * | Association table and foreign command builder | Fetch |
 	 * |---|---|
 	 * | schemaless association table ({@see getIsSchemalessAssociation()}) | association rows, then foreign rows, joined in PHP, {@see fetchForeignObjectsByQueries()} |
-	 * | SQL builder: {@see IDbCommandBuilder} or {@see TDbCommandBuilder} | one INNER JOIN query, {@see fetchForeignObjectsByJoin()} |
+	 * | SQL builder ({@see IDbCommandBuilder}) | one INNER JOIN query, {@see fetchForeignObjectsByJoin()} |
 	 * | any other builder, such as a document store's | the two queries, {@see fetchForeignObjectsByQueries()} |
 	 *
 	 * @param array $results by reference, original source results.
@@ -328,7 +327,7 @@ class TActiveRecordHasManyAssociation extends TActiveRecordRelation
 	protected function fetchForeignObjects(&$results, $foreignKeys, $indexValues, $sourceKeys)
 	{
 		$builder = $this->getForeignCommandBuilder()->getBuilder();
-		if (!$this->getIsSchemalessAssociation() && ($builder instanceof IDbCommandBuilder || $builder instanceof TDbCommandBuilder)) {
+		if (!$this->getIsSchemalessAssociation() && $builder instanceof IDbCommandBuilder) {
 			$this->fetchForeignObjectsByJoin($results, $foreignKeys, $indexValues, $sourceKeys);
 		} else {
 			$this->fetchForeignObjectsByQueries($results, $foreignKeys, $indexValues, $sourceKeys);

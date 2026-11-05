@@ -40,11 +40,11 @@
 		}
 	],
 	"require": {
-		"php": ">=8.1.0",
-		"ext-pdo": "*"
+		"php": ">=8.2.0",
+		"ext-pdo": "*",
+		"pradosoft/prado": "^4.4@dev"
 	},
 	"require-dev": {
-		"pradosoft/prado": "dev-master",
 		"phpunit/phpunit": "^10",
 		"phpdocumentor/shim": "^3",
 		"friendsofphp/php-cs-fixer": "^3.94",
@@ -57,8 +57,7 @@
 		"ext-pdo_sqlsrv": "Microsoft SQL Server records",
 		"ext-pdo_oci": "Oracle records",
 		"ext-pdo_ibm": "IBM DB2 records",
-		"ext-pdo_firebird": "Firebird and InterBase records",
-		"pradosoft/prado": "PRADO 4.4 (branch db-modern-exec, pradosoft/prado#1088) for TActiveRecord::insertOrIgnore() and upsert(), which call TDataGatewayCommand::insertOrIgnore() and upsert()"
+		"ext-pdo_firebird": "Firebird and InterBase records"
 	},
 	"config": {
 		"platform": {

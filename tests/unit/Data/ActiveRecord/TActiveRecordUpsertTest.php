@@ -69,8 +69,7 @@ class UpsertDefaultsRecord extends UpsertPlainRecord
 
 /**
  * Covers TActiveRecord::insertOrIgnore() and upsert() against a stub gateway, the
- * gateway's check for the PRADO 4.4 data gateway, saving to a schemaless table, and
- * the case-insensitive column mapping.
+ * saving to a schemaless table, and the case-insensitive column mapping.
  */
 class TActiveRecordUpsertTest extends \PHPUnit\Framework\TestCase
 {
@@ -141,21 +140,6 @@ class TActiveRecordUpsertTest extends \PHPUnit\Framework\TestCase
 			[['upsert', ['username', 'email' => 'given', 'id'], ['id']]],
 			$this->gateway->calls
 		);
-	}
-
-	public function testGatewayRequiresTheDataGatewayMethods()
-	{
-		$gateway = new UpsertCommandGateway(new TActiveRecordManager());
-		$gateway->command = new \stdClass();
-		foreach (['insertOrIgnore' => fn () => $gateway->insertOrIgnore(new UpsertPlainRecord()), 'upsert' => fn () => $gateway->upsert(new UpsertPlainRecord())] as $method => $write) {
-			try {
-				$write();
-				$this->fail("{$method}() did not throw");
-			} catch (TActiveRecordException $e) {
-				$this->assertSame('ar_method_requires_data_gateway', $e->getErrorCode());
-				$this->assertStringContainsString("stdClass::{$method}()", $e->getMessage());
-			}
-		}
 	}
 
 	public function testRecordColumnValuesAreThePublicNonRelationProperties()

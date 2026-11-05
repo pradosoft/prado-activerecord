@@ -126,7 +126,7 @@ A store whose metadata lists no foreign keys, such as a document store or a tabl
 | `HAS_MANY`, `HAS_ONE`, `BELONGS_TO` | `'author_id'` | the named column, matched to the primary key of the referenced table by position |
 | `MANY_TO_MANY` | `'post_tags.(post_id, tag_id)'` | the association column to this record's table, then the one to the related table; each matches a single-column primary key |
 
-The metadata keys take precedence; the named columns apply when the metadata holds no matching key. An association table whose metadata reports itself schemaless (`IDataSchemalessTableInfo`, PRADO 4.4) always uses the two named columns, and a relation that does not name both throws `TActiveRecordException` (`ar_mn_relation_keys_required`). A schemaless association table, or a command builder that cannot build a join, loads `MANY_TO_MANY` records with two queries joined in PHP: the association rows, then the related rows.
+The metadata keys take precedence; the named columns apply when the metadata holds no matching key. An association table whose metadata reports itself schemaless (`IDataSchemalessTableInfo`) always uses the two named columns, and a relation that does not name both throws `TActiveRecordException` (`ar_mn_relation_keys_required`). A schemaless association table, or a command builder that cannot build a join, loads `MANY_TO_MANY` records with two queries joined in PHP: the association rows, then the related rows.
 
 ---
 

@@ -107,11 +107,11 @@ Finder conditions and dynamic finder names use the physical column names (`findB
 
 After an insert, a column with a sequence (auto-increment, serial) receives the last insert id.
 
-A table whose metadata implements `IDataSchemalessTableInfo` (PRADO 4.4) and reports `isSchemaless()`, such as a document collection without a validator, is schemaless. Its values come from `getRecordColumnValues()`: the record's public properties that are not relations, keyed by property name. An insert leaves out `null` values; an update writes them, and the metadata's primary keys select the row.
+A table whose metadata implements `IDataSchemalessTableInfo` and reports `isSchemaless()`, such as a document collection without a validator, is schemaless. Its values come from `getRecordColumnValues()`: the record's public properties that are not relations, keyed by property name. An insert leaves out `null` values; an update writes them, and the metadata's primary keys select the row.
 
 ### Insert or ignore, and upsert
 
-`insertOrIgnore()` inserts the record unless the row conflicts with an existing key. `upsert($updateData = null, $conflictColumns = null)` inserts the record, or updates the row it conflicts with. Both need PRADO 4.4, whose data gateway builds the statement for each driver; on an earlier PRADO they throw `TActiveRecordException` (`ar_method_requires_data_gateway`).
+`insertOrIgnore()` inserts the record unless the row conflicts with an existing key. `upsert($updateData = null, $conflictColumns = null)` inserts the record, or updates the row it conflicts with. PRADO's data gateway builds the statement for each driver.
 
 | `$updateData` | A conflict updates |
 |---|---|
@@ -243,8 +243,7 @@ Every other name follows `TComponent` rules: a public property, a getter/setter 
 `toArray()` lists table columns, so extra properties and relation values are left out. `getViewData()` lists declared
 properties, so it needs no database connection for the columns and includes the relations.
 
-`getViewData()` and `setViewData()` are the `Prado\Web\UI\IViewDataModel` contract of PRADO 4.4, provided by name so a
-record also runs on PRADO 4.3. `TTemplateControl::tryToUpdateView()` and `tryToUpdateModel()` call them; see
+`TActiveRecord` implements `Prado\Web\UI\IViewDataModel` with `getViewData()` and `setViewData()`. `TTemplateControl::tryToUpdateView()` and `tryToUpdateModel()` call them; see
 [integration.md](integration.md#binding-records-to-template-controls).
 
 ---

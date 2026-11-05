@@ -10,7 +10,7 @@ Active Record shipped inside the PRADO framework from PRADO 3.1. PRADO 4.4 remov
 composer require pradosoft/prado-activerecord
 ```
 
-The package requires PHP 8.1 or later and PRADO 4.3.3 or later. Its Composer type is `prado4-extension`.
+The package requires PHP 8.2 or later and PRADO 4.4 or later. Its Composer type is `prado4-extension`.
 
 PRADO reads the package's `extra.prado` section from `composer.json`:
 
@@ -22,15 +22,9 @@ PRADO reads the package's `extra.prado` section from `composer.json`:
 
 Existing module definitions keep working without changes.
 
-### PRADO 4.3 and the bundled copy
+### PRADO 4.3
 
-PRADO 4.3.x still ships `framework/Data/ActiveRecord`. With the package installed beside it, two copies of each class exist and the first one loaded wins:
-
-- A record class that `extends TActiveRecord`, and any class reached through Composer's autoloader → the package copy.
-- A class created by its fully qualified name through `Prado::createComponent()` before Composer has loaded it, for example `<module class="Prado\Data\ActiveRecord\TActiveRecordConfig">` → the framework copy, because `Prado::using()` includes the file from the framework directory when it exists.
-- A class created by its short name, `<module class="TActiveRecordConfig">` → the class map decides; on PRADO 4.4 the package's `config/classes.json` is registered and the package copy loads.
-
-The two copies behave the same for everything an application calls. The fixes listed in the [changelog](../CHANGELOG.md) apply only to the package copy. The package takes full effect on PRADO 4.4, where the framework copy is gone and every lookup reaches the package.
+From 1.1.0 the package requires PRADO 4.4, which no longer bundles ActiveRecord. Version 1.0.0 also runs on PRADO 4.3.3, beside the framework's bundled copy. There, the first copy of a class to load wins: a record class that extends `TActiveRecord` and any class reached through Composer's autoloader load the package copy; a class that `Prado::createComponent()` creates by its fully qualified name before Composer has loaded it loads the framework copy.
 
 ## What is unchanged
 

@@ -6,11 +6,11 @@ A record class maps one table to one PHP class: each public property is a column
 
 ## Requirements
 
-- PHP 8.1 or later
-- PRADO 4.3.3 or later (`pradosoft/prado`)
+- PHP 8.2 or later
+- PRADO 4.4 or later (`pradosoft/prado`)
 - PDO extension and a PDO driver for your database
 
-On PRADO 4.3.x the framework still bundles its own ActiveRecord copy; the [migration guide](docs/migration.md) explains which copy loads. PRADO 4.4 removes the bundled copy.
+PRADO 4.4 removes the framework's bundled ActiveRecord copy, and this package takes its place. Version 1.0.0 of the package also runs on PRADO 4.3.3; see the [migration guide](docs/migration.md).
 
 ## Installation
 

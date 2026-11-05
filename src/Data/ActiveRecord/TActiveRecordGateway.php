@@ -13,7 +13,7 @@ namespace Prado\Data\ActiveRecord;
 use Prado\Data\ActiveRecord\Exceptions\TActiveRecordException;
 use Prado\Data\ActiveRecord\Relations\TActiveRecordRelationContext;
 use Prado\Data\Common\IDataSchemalessTableInfo;
-use Prado\Data\Common\TDbMetaData;
+use Prado\Data\Common\IDataMetaData;
 use Prado\Data\Common\TDbTableColumn;
 use Prado\Data\Common\TDbTableInfo;
 use Prado\Data\DataGateway\TDataGatewayCommand;
@@ -59,8 +59,7 @@ use Prado\TComponentReflection;
  * ```
  *
  * {@see insertOrIgnore()} and {@see upsert()} write a record that may conflict with an
- * existing key. They need the `insertOrIgnore()` and `upsert()` methods of the PRADO 4.4
- * data gateway command.
+ * existing key, through the data gateway command's `insertOrIgnore()` and `upsert()`.
  *
  * A table whose metadata reports itself schemaless, such as a document collection, takes
  * its insert and update values from the record's public properties ({@see getIsSchemaless()}).
@@ -83,7 +82,7 @@ class TActiveRecordGateway extends \Prado\TComponent
 	 */
 	private \WeakMap $_tables;
 	/**
-	 * @var \WeakMap<IDataConnection, TDbMetaData> meta data reader per connection
+	 * @var \WeakMap<IDataConnection, IDataMetaData> meta data reader per connection
 	 */
 	private \WeakMap $_meta;
 	private $_commandBuilders = [];
@@ -184,7 +183,7 @@ class TActiveRecordGateway extends \Prado\TComponent
 			//call this first to ensure that unserializing the cache
 			//will find the correct driver dependent classes.
 			if (!isset($this->_meta[$connection])) {
-				$this->_meta[$connection] = $this->createMetaData($connection);
+				$this->_meta[$connection] = $connection->getDbMetaData();
 			}
 
 			$connStr = $connection instanceof TDbConnection
@@ -205,23 +204,6 @@ class TActiveRecordGateway extends \Prado\TComponent
 			$this->_tables[$connection] = $tables;
 		}
 		return $tables[$tableName];
-	}
-
-	/**
-	 * Creates the meta data reader for a connection.
-	 * A connection that provides `getDbMetaData()` (PRADO 4.4) supplies its own reader,
-	 * so a driver that is not a {@see TDbConnection} resolves its metadata class.
-	 * Otherwise the reader comes from {@see TDbMetaData::getInstance()}.
-	 * @param IDataConnection $connection database connection
-	 * @return \Prado\Data\Common\IDataMetaData|TDbMetaData meta data reader for the connection.
-	 * @since 1.1.0 of prado-activerecord
-	 */
-	protected function createMetaData(IDataConnection $connection)
-	{
-		if (method_exists($connection, 'getDbMetaData')) {
-			return $connection->getDbMetaData();
-		}
-		return TDbMetaData::getInstance($connection);
 	}
 
 	/**
@@ -453,13 +435,12 @@ class TActiveRecordGateway extends \Prado\TComponent
 	/**
 	 * Inserts a new record unless it conflicts with an existing key.
 	 * @param TActiveRecord $record new record.
-	 * @throws TActiveRecordException when the data gateway lacks `insertOrIgnore()` (PRADO before 4.4).
 	 * @return mixed the last insert ID, true when the table has no sequence, or false when the row conflicts.
 	 * @since 1.1.0 of prado-activerecord
 	 */
 	public function insertOrIgnore(TActiveRecord $record): mixed
 	{
-		$result = $this->getConflictCommand($record, 'insertOrIgnore')->insertOrIgnore($this->getInsertValues($record));
+		$result = $this->getCommand($record)->insertOrIgnore($this->getInsertValues($record));
 		if ($result) {
 			$this->updatePostInsert($record);
 		}
@@ -471,34 +452,16 @@ class TActiveRecordGateway extends \Prado\TComponent
 	 * @param TActiveRecord $record record to insert or update.
 	 * @param ?array $updateData the update data, as {@see TActiveRecord::upsert()} describes it.
 	 * @param ?array $conflictColumns the conflict target columns; null targets the primary key.
-	 * @throws TActiveRecordException when the data gateway lacks `upsert()` (PRADO before 4.4).
 	 * @return mixed the last insert ID, true when no ID is available, or false when nothing is written.
 	 * @since 1.1.0 of prado-activerecord
 	 */
 	public function upsert(TActiveRecord $record, ?array $updateData = null, ?array $conflictColumns = null): mixed
 	{
-		$result = $this->getConflictCommand($record, 'upsert')->upsert($this->getInsertValues($record), $updateData, $conflictColumns);
+		$result = $this->getCommand($record)->upsert($this->getInsertValues($record), $updateData, $conflictColumns);
 		if ($result) {
 			$this->updatePostInsert($record);
 		}
 		return $result;
-	}
-
-	/**
-	 * Returns the record's command after checking that it provides a conflict-handling method.
-	 * @param TActiveRecord $record the record to write.
-	 * @param string $method `insertOrIgnore` or `upsert`.
-	 * @throws TActiveRecordException when the command lacks the method (PRADO before 4.4).
-	 * @return TDataGatewayCommand the record's command.
-	 * @since 1.1.0 of prado-activerecord
-	 */
-	protected function getConflictCommand(TActiveRecord $record, string $method)
-	{
-		$command = $this->getCommand($record);
-		if (!method_exists($command, $method)) {
-			throw new TActiveRecordException('ar_method_requires_data_gateway', $record::class, $method, $command::class);
-		}
-		return $command;
 	}
 
 	/**
@@ -555,7 +518,7 @@ class TActiveRecordGateway extends \Prado\TComponent
 
 	/**
 	 * Returns whether a table is schemaless: its metadata implements
-	 * {@see IDataSchemalessTableInfo} (PRADO 4.4) and reports `isSchemaless()`, as a
+	 * {@see IDataSchemalessTableInfo} and reports `isSchemaless()`, as a
 	 * document collection without a validator does.
 	 *
 	 * | Table | Insert values | Update values |

@@ -18,6 +18,7 @@ use Prado\Data\DataGateway\IDataCriteria;
 use Prado\Data\DataGateway\TSqlCriteria;
 use Prado\Prado;
 use Prado\TPropertyValue;
+use Prado\Web\UI\IViewDataModel;
 use Prado\Util\Traits\TReflectionClassTrait;
 use ReflectionProperty;
 
@@ -177,7 +178,7 @@ use ReflectionProperty;
  * $user->upsert(null, ['id']);                      // conflicts on the primary key
  * ```
  * SQL Server, Oracle, DB2, and Firebird build a MERGE statement and require an active
- * transaction. Both methods need the PRADO 4.4 data gateway.
+ * transaction.
  *
  * Column names match properties without regard to case, so a driver that returns
  * upper case column names, such as Firebird, Oracle, and DB2, fills lower case
@@ -186,7 +187,7 @@ use ReflectionProperty;
  * @author Wei Zhuo <weizho[at]gmail[dot]com>
  * @since 3.1
  */
-abstract class TActiveRecord extends \Prado\TComponent
+abstract class TActiveRecord extends \Prado\TComponent implements IViewDataModel
 {
 	use TReflectionClassTrait;
 
@@ -1093,12 +1094,12 @@ abstract class TActiveRecord extends \Prado\TComponent
 	}
 
 	/**
-	 * Create a new TSqlCriteria object from a string $criteria. The $args
+	 * Create a new TActiveRecordCriteria object from a string $criteria. The $args
 	 * are additional parameters and are used in place of the $parameters
 	 * if $parameters is not an array and $args is an arrary.
-	 * A TSqlCriteria object is copied, so the finder methods that set its limit or
+	 * A criteria object is copied, so the finder methods that set its limit or
 	 * condition leave the caller's object unchanged.
-	 * @param string|TSqlCriteria $criteria sql criteria
+	 * @param IDataCriteria|string $criteria sql criteria, or another driver's criteria
 	 * @param mixed $parameters parameters passed by the user.
 	 * @param array $args additional parameters obtained from function_get_args().
 	 * @return TSqlCriteria criteria object.
@@ -1108,7 +1109,7 @@ abstract class TActiveRecord extends \Prado\TComponent
 		if (is_string($criteria)) {
 			$useArgs = !is_array($parameters) && is_array($args);
 			return new TActiveRecordCriteria($criteria, $useArgs ? $args : $parameters);
-		} elseif ($criteria instanceof TSqlCriteria || $criteria instanceof IDataCriteria) {
+		} elseif ($criteria instanceof IDataCriteria) {
 			// Any driver's criteria passes through: TSqlCriteria for SQL, a document
 			// store's own criteria class for its driver. The copy leaves the caller's unchanged.
 			return clone $criteria;
@@ -1301,9 +1302,7 @@ abstract class TActiveRecord extends \Prado\TComponent
 	 * does.
 	 *
 	 * `TTemplateControl::tryToUpdateView()` binds this array to the controls whose IDs
-	 * match the keys. This method and {@see setViewData()} are the
-	 * `Prado\Web\UI\IViewDataModel` contract of PRADO 4.4, provided by name so the
-	 * record also runs on PRADO 4.3, where the interface does not exist.
+	 * match the keys. This method and {@see setViewData()} implement {@see IViewDataModel}.
 	 *
 	 * @return array<string, mixed> columns and relations keyed by property name
 	 * @since 1.0.0 of prado-activerecord

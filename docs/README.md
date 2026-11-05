@@ -37,8 +37,8 @@ Active Record wraps one row of a database table or view in a PHP object. A recor
 | `findAllBy<Columns>(...)` | Array of records (dynamic finder) |
 | `with<Relation>(...)` | Relation handler; call a finder method on it to load related records |
 | `save()` | `true` when the row is inserted or updated, `false` otherwise |
-| `insertOrIgnore()` | Last insert id or `true` when the row is inserted; `false` when it conflicts (PRADO 4.4) |
-| `upsert($updateData = null, $conflictColumns = null)` | Last insert id or `true` when the row is inserted or updated, `false` otherwise (PRADO 4.4) |
+| `insertOrIgnore()` | Last insert id or `true` when the row is inserted; `false` when it conflicts |
+| `upsert($updateData = null, $conflictColumns = null)` | Last insert id or `true` when the row is inserted or updated, `false` otherwise |
 | `delete()` | `true` when the row is deleted, `false` otherwise |
 | `deleteByPk($keys)`, `deleteAllByPks($keys)` | `int` number of rows deleted |
 | `deleteAll($criteria = null, ...$params)` | `int` number of rows deleted |
