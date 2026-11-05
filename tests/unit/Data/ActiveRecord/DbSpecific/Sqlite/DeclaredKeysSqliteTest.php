@@ -7,6 +7,11 @@ use Prado\Data\ActiveRecord\Relations\TActiveRecordHasManyAssociation;
 use Prado\Data\ActiveRecord\Relations\TActiveRecordRelationContext;
 use Prado\Data\ActiveRecord\TActiveRecord;
 use Prado\Data\ActiveRecord\TActiveRecordCriteria;
+use Prado\Data\ActiveRecord\TActiveRecordGateway;
+use Prado\Data\ActiveRecord\TActiveRecordManager;
+use Prado\Data\Common\IDataSchemalessTableInfo;
+use Prado\Data\Common\IDataTableInfo;
+use Prado\Data\IDataConnection;
 use Prado\Data\Common\TDbCommandBuilder;
 use Prado\Data\TDbConnection;
 
@@ -110,6 +115,40 @@ class DkTag extends DeclaredKeysSqliteRecord
 	}
 }
 
+/** A gateway that hands out the association table's metadata through a wrapper. */
+class DkSchemalessGateway extends TActiveRecordGateway
+{
+	public ?\Closure $wrap = null;
+
+	public function getTableInfo(IDataConnection $connection, $tableName)
+	{
+		$info = parent::getTableInfo($connection, $tableName);
+		return $tableName === 'dk_post_tag' && $this->wrap !== null ? ($this->wrap)($info) : $info;
+	}
+}
+
+/** Posts whose association table, dk_post_tag, is reported schemaless by {@see DkSchemalessGateway}. */
+class DkSchemalessPost extends DkPost
+{
+	public static ?DkSchemalessGateway $gateway = null;
+	public $undeclaredTags = [];
+
+	public static $RELATIONS = [
+		'tags' => [self::MANY_TO_MANY, DkTag::class, 'dk_post_tag.(post_id, tag_id)'],
+		'undeclaredTags' => [self::MANY_TO_MANY, DkTag::class, 'dk_post_tag'],
+	];
+
+	public function getRecordGateway()
+	{
+		return static::$gateway;
+	}
+
+	public static function finder($class = __CLASS__)
+	{
+		return parent::finder($class);
+	}
+}
+
 /** Loads MANY_TO_MANY records with the two queries a command builder without joins uses. */
 class DkQueriesAssociation extends TActiveRecordHasManyAssociation
 {
@@ -174,6 +213,115 @@ class DeclaredKeysSqliteTest extends \PHPUnit\Framework\TestCase
 			$handler = new DkQueriesAssociation(new TActiveRecordRelationContext($post, 'tags', DkPost::$RELATIONS['tags']), new TActiveRecordCriteria());
 			$handler->fetchResultsInto($post);
 			$this->assertSame($tagIds, self::ids($post->tags), "post {$id}");
+		}
+	}
+
+	/**
+	 * Reports dk_post_tag as a schemaless table without foreign keys, as a document
+	 * store's collection would be.
+	 */
+	private function useSchemalessAssociation(): void
+	{
+		if (!interface_exists(IDataSchemalessTableInfo::class)) {
+			$this->markTestSkipped('IDataSchemalessTableInfo is part of PRADO 4.4.');
+		}
+		$gateway = new DkSchemalessGateway(TActiveRecordManager::getInstance());
+		$gateway->wrap = fn (IDataTableInfo $info) => new class ($info) implements IDataTableInfo, IDataSchemalessTableInfo {
+			public function __construct(private IDataTableInfo $info)
+			{
+			}
+
+			public function isSchemaless(): bool
+			{
+				return true;
+			}
+
+			public function getTableName()
+			{
+				return $this->info->getTableName();
+			}
+
+			public function getTableFullName()
+			{
+				return $this->info->getTableFullName();
+			}
+
+			public function getIsView()
+			{
+				return false;
+			}
+
+			public function getColumns()
+			{
+				return $this->info->getColumns();
+			}
+
+			public function getColumn($name)
+			{
+				return $this->info->getColumn($name);
+			}
+
+			public function getColumnNames()
+			{
+				return $this->info->getColumnNames();
+			}
+
+			public function getLowerCaseColumnNames()
+			{
+				return $this->info->getLowerCaseColumnNames();
+			}
+
+			public function getPrimaryKeys()
+			{
+				return [];
+			}
+
+			public function getForeignKeys()
+			{
+				return [];
+			}
+
+			public function createCommandBuilder($connection)
+			{
+				return $this->info->createCommandBuilder($connection);
+			}
+		};
+		DkSchemalessPost::$gateway = $gateway;
+	}
+
+	public function testManyToManyThroughSchemalessAssociation()
+	{
+		$this->useSchemalessAssociation();
+		$finder = DkSchemalessPost::finder();
+		$sql = [];
+		$handler = function ($sender, $param) use (&$sql) {
+			$sql[] = $param->getCommand()->getText();
+		};
+		$finder->OnCreateCommand[] = $handler;
+		try {
+			$posts = $finder->withTags()->findAll();
+		} finally {
+			$finder->OnCreateCommand->remove($handler);
+		}
+		$tags = [];
+		foreach ($posts as $post) {
+			$tags[(int) $post->id] = self::ids($post->tags);
+		}
+		ksort($tags);
+		$this->assertSame([1 => [1, 2], 2 => [], 3 => [2]], $tags);
+		$this->assertStringContainsString('dk_tag', implode(' ', $sql), 'the foreign query runs');
+		$this->assertStringNotContainsStringIgnoringCase('JOIN', implode(' ', $sql), 'a schemaless association is not joined');
+	}
+
+	public function testSchemalessAssociationRequiresBothColumns()
+	{
+		$this->useSchemalessAssociation();
+		try {
+			DkSchemalessPost::finder()->withUndeclaredTags()->findByPk(1);
+			$this->fail('The relation loaded without naming its association columns.');
+		} catch (TActiveRecordException $e) {
+			$this->assertSame('ar_mn_relation_keys_required', $e->getErrorCode());
+			$this->assertStringContainsString("'dk_post_tag.(sourceKey, foreignKey)'", $e->getMessage());
 		}
 	}
 }

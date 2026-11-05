@@ -8,6 +8,7 @@ use Prado\Data\ActiveRecord\Scaffold\InputBuilder\TSqlSrvScaffoldInput;
 use Prado\Data\ActiveRecord\TActiveRecord;
 use Prado\Data\ActiveRecord\TActiveRecordGateway;
 use Prado\Data\ActiveRecord\TActiveRecordManager;
+use Prado\Data\Common\IDataSchemalessTableInfo;
 
 /** A gateway that records the conflict writes it receives. */
 class UpsertStubGateway extends TActiveRecordGateway
@@ -28,7 +29,7 @@ class UpsertStubGateway extends TActiveRecordGateway
 	}
 }
 
-/** A gateway whose command is the given object, and which exposes the write values. */
+/** A gateway whose command is the given object. */
 class UpsertCommandGateway extends TActiveRecordGateway
 {
 	public object $command;
@@ -36,16 +37,6 @@ class UpsertCommandGateway extends TActiveRecordGateway
 	public function getCommand(TActiveRecord $record)
 	{
 		return $this->command;
-	}
-
-	public function insertValues(TActiveRecord $record): array
-	{
-		return $this->getInsertValues($record);
-	}
-
-	public function updateValues(TActiveRecord $record): array
-	{
-		return $this->getUpdateValues($record);
 	}
 }
 
@@ -80,8 +71,8 @@ class UpsertDefaultsRecord extends UpsertPlainRecord
 
 /**
  * Covers TActiveRecord::insertOrIgnore() and upsert() against a stub gateway, the
- * gateway's check for the PRADO 4.4 data gateway, the values of a schemaless table,
- * and the case-insensitive column mapping.
+ * gateway's check for the PRADO 4.4 data gateway, saving to a schemaless table, and
+ * the case-insensitive column mapping.
  */
 class TActiveRecordUpsertTest extends \PHPUnit\Framework\TestCase
 {
@@ -169,26 +160,52 @@ class TActiveRecordUpsertTest extends \PHPUnit\Framework\TestCase
 		}
 	}
 
-	public function testSchemalessTableUsesTheRecordProperties()
+	public function testRecordColumnValuesAreThePublicNonRelationProperties()
 	{
+		$record = new UpsertPlainRecord(['id' => 5, 'username' => 'ann']);
+		$record->related = ['ignored'];
+		$this->assertSame(['id' => 5, 'username' => 'ann', 'email' => null], $record->getRecordColumnValues());
+	}
+
+	public function testSchemalessSaveWritesTheRecordProperties()
+	{
+		if (!interface_exists(IDataSchemalessTableInfo::class)) {
+			$this->markTestSkipped('IDataSchemalessTableInfo is part of PRADO 4.4.');
+		}
 		$key = new class () {
 			public function getIsPrimaryKey()
 			{
 				return true;
 			}
+
+			public function hasSequence()
+			{
+				return false;
+			}
 		};
-		$tableInfo = new class ($key) {
+		$tableInfo = new class ($key) implements IDataSchemalessTableInfo {
 			public function __construct(private object $key)
 			{
+			}
+
+			public function isSchemaless(): bool
+			{
+				return true;
 			}
 
 			public function getColumns()
 			{
 				return ['id' => $this->key];
 			}
+
+			public function getPrimaryKeys()
+			{
+				return ['id'];
+			}
 		};
-		$gateway = new UpsertCommandGateway(new TActiveRecordManager());
-		$gateway->command = new class ($tableInfo) {
+		$command = new class ($tableInfo) {
+			public array $calls = [];
+
 			public function __construct(private object $tableInfo)
 			{
 			}
@@ -197,12 +214,34 @@ class TActiveRecordUpsertTest extends \PHPUnit\Framework\TestCase
 			{
 				return $this->tableInfo;
 			}
+
+			public function insert($values)
+			{
+				$this->calls[] = ['insert', $values];
+				return true;
+			}
+
+			public function updateByPk($values, $keys)
+			{
+				$this->calls[] = ['update', $values, $keys];
+				return 1;
+			}
 		};
+		$gateway = new UpsertCommandGateway(new TActiveRecordManager());
+		$gateway->command = $command;
+		UpsertPlainRecord::$gateway = $gateway;
+
 		$record = new UpsertPlainRecord(['id' => 5, 'username' => 'ann']);
 		$record->related = ['ignored'];
+		$this->assertTrue($record->save());
+		$this->assertSame(TActiveRecord::STATE_LOADED, $record->getRecordState());
+		$record->username = 'ben';
+		$this->assertTrue($record->save());
 
-		$this->assertSame(['id' => 5, 'username' => 'ann'], $gateway->insertValues($record));
-		$this->assertSame([['username' => 'ann'], ['id' => 5]], $gateway->updateValues($record));
+		$this->assertSame([
+			['insert', ['id' => 5, 'username' => 'ann']],
+			['update', ['username' => 'ben', 'email' => null], ['id' => 5]],
+		], $command->calls);
 	}
 
 	public function testColumnNamesMatchPropertiesWithoutRegardToCase()

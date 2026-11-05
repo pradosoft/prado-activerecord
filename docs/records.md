@@ -107,7 +107,7 @@ Finder conditions and dynamic finder names use the physical column names (`findB
 
 After an insert, a column with a sequence (auto-increment, serial) receives the last insert id.
 
-A table whose metadata is not SQL table information and lists no column besides the primary key, such as a document collection without a validator, is schemaless. Its insert and update values are the record's public properties that are not `null` and not relations.
+A table whose metadata implements `IDataSchemalessTableInfo` (PRADO 4.4) and reports `isSchemaless()`, such as a document collection without a validator, is schemaless. Its values come from `getRecordColumnValues()`: the record's public properties that are not relations, keyed by property name. An insert leaves out `null` values; an update writes them, and the metadata's primary keys select the row.
 
 ### Insert or ignore, and upsert
 

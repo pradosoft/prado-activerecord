@@ -45,6 +45,7 @@ Active Record wraps one row of a database table or view in a PHP object. A recor
 | `deleteBy<Columns>(...)`, `deleteAllBy<Columns>(...)` | `int` number of rows deleted (dynamic finder) |
 | `copyFrom($data)` | Nothing; copies an array or object into the record |
 | `toArray()`, `toJSON()` | Column values as an array, or as a JSON string |
+| `getRecordColumnValues()` | Public non-relation property values by property name; the values a schemaless table stores |
 | `equals($record, $strict = false)` | `true` when the primary key values match |
 | `getRecordTableInfo()` | `TDbTableInfo` for the record's table |
 | `getDbConnection()`, `setDbConnection($conn)` | The record's connection; without its own, the manager's current connection |

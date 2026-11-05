@@ -15,6 +15,7 @@ namespace Prado\Data\ActiveRecord\Relations;
  */
 use Prado\Data\ActiveRecord\Exceptions\TActiveRecordException;
 use Prado\Data\ActiveRecord\TActiveRecord;
+use Prado\Data\Common\IDataSchemalessTableInfo;
 use Prado\Data\Common\IDbCommandBuilder;
 use Prado\Data\Common\TDbCommandBuilder;
 use Prado\Prado;
@@ -134,14 +135,27 @@ class TActiveRecordHasManyAssociation extends TActiveRecordRelation
 	 * self-referencing relation. When the metadata holds no foreign keys, as in a
 	 * document store, the two columns of a `'pivot.(sourceFk, foreignFk)'` relation
 	 * map to the primary keys of the source and foreign tables
-	 * ({@see buildDeclaredAssociationKeys()}).
+	 * ({@see buildDeclaredAssociationKeys()}). A schemaless association table
+	 * ({@see getIsSchemalessAssociation()}) always takes the two named columns.
 	 * @throws TActiveRecordException when the metadata holds no matching foreign key
-	 *   and the relation does not name both association columns.
+	 *   and the relation does not name both association columns, or when a schemaless
+	 *   association table's relation does not name both (`ar_mn_relation_keys_required`).
 	 * @return array 2 arrays of source keys and foreign keys from the association table.
 	 */
 	public function getRelationForeignKeys()
 	{
 		$association = $this->getAssociationTable();
+		if ($this->getIsSchemalessAssociation()) {
+			$keys = $this->buildDeclaredAssociationKeys();
+			if ($keys === null) {
+				throw new TActiveRecordException(
+					'ar_mn_relation_keys_required',
+					$this->getContext()->getForeignRecordFinder()::class,
+					$association->getTableName()
+				);
+			}
+			return $keys;
+		}
 		try {
 			$sourceKeys = $this->findForeignKeys($association, $this->getSourceRecord(), true, $this->getSourceKeyExclusions());
 			$fkObject = $this->getContext()->getForeignRecordFinder();
@@ -206,6 +220,19 @@ class TActiveRecordHasManyAssociation extends TActiveRecordRelation
 			$columns[] = $this->_foreignFkColumn;
 		}
 		return $columns;
+	}
+
+	/**
+	 * Returns whether the association table is schemaless: its metadata implements
+	 * {@see IDataSchemalessTableInfo} (PRADO 4.4) and reports `isSchemaless()`, as a
+	 * document collection does. Such a table has no foreign key metadata and no join.
+	 * @return bool true when the association table is schemaless.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	protected function getIsSchemalessAssociation(): bool
+	{
+		$association = $this->getAssociationTable();
+		return $association instanceof IDataSchemalessTableInfo && $association->isSchemaless();
 	}
 
 	/**
@@ -287,10 +314,11 @@ class TActiveRecordHasManyAssociation extends TActiveRecordRelation
 	/**
 	 * Fetches the M-N foreign objects.
 	 *
-	 * | Foreign command builder | Fetch |
+	 * | Association table and foreign command builder | Fetch |
 	 * |---|---|
-	 * | SQL: {@see IDbCommandBuilder} or {@see TDbCommandBuilder} | one INNER JOIN query, {@see fetchForeignObjectsByJoin()} |
-	 * | any other, such as a document store | association rows, then foreign rows, joined in PHP, {@see fetchForeignObjectsByQueries()} |
+	 * | schemaless association table ({@see getIsSchemalessAssociation()}) | association rows, then foreign rows, joined in PHP, {@see fetchForeignObjectsByQueries()} |
+	 * | SQL builder: {@see IDbCommandBuilder} or {@see TDbCommandBuilder} | one INNER JOIN query, {@see fetchForeignObjectsByJoin()} |
+	 * | any other builder, such as a document store's | the two queries, {@see fetchForeignObjectsByQueries()} |
 	 *
 	 * @param array $results by reference, original source results.
 	 * @param array $foreignKeys foreign-table column → pivot-column mapping.
@@ -300,7 +328,7 @@ class TActiveRecordHasManyAssociation extends TActiveRecordRelation
 	protected function fetchForeignObjects(&$results, $foreignKeys, $indexValues, $sourceKeys)
 	{
 		$builder = $this->getForeignCommandBuilder()->getBuilder();
-		if ($builder instanceof IDbCommandBuilder || $builder instanceof TDbCommandBuilder) {
+		if (!$this->getIsSchemalessAssociation() && ($builder instanceof IDbCommandBuilder || $builder instanceof TDbCommandBuilder)) {
 			$this->fetchForeignObjectsByJoin($results, $foreignKeys, $indexValues, $sourceKeys);
 		} else {
 			$this->fetchForeignObjectsByQueries($results, $foreignKeys, $indexValues, $sourceKeys);
@@ -399,7 +427,7 @@ class TActiveRecordHasManyAssociation extends TActiveRecordRelation
 			$pivotSourceCols,
 			$indexValues
 		);
-		return $cmd->query()->readAll();
+		return array_map(fn ($row) => (array) $row, $cmd->query()->readAll());
 	}
 
 	/**
@@ -440,6 +468,7 @@ class TActiveRecordHasManyAssociation extends TActiveRecordRelation
 		$rows = $this->getCommandBuilder()->onExecuteCommand($cmd, $cmd->query())->readAll();
 		$indexed = [];
 		foreach ($rows as $row) {
+			$row = (array) $row;
 			$indexed[serialize($this->extractTuple($row, $foreignFkCols))][] = $row;
 		}
 		return $indexed;

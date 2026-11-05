@@ -1245,6 +1245,26 @@ abstract class TActiveRecord extends \Prado\TComponent
 	}
 
 	/**
+	 * Returns the record's public instance properties that are not relations, keyed by
+	 * property name. A schemaless table, which has no authoritative column list, stores
+	 * these values ({@see TActiveRecordGateway::getIsSchemaless()}). `$COLUMN_MAPPING` does
+	 * not apply, because such a table has no physical column names.
+	 * @return array property name => value, nulls included.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	public function getRecordColumnValues(): array
+	{
+		$values = [];
+		foreach (static::getReflectionClass()->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
+			$name = $property->getName();
+			if (!$property->isStatic() && !$this->hasRecordRelation($name)) {
+				$values[$name] = $this->$name;
+			}
+		}
+		return $values;
+	}
+
+	/**
 	 * Returns record data as an associative array of column name => column value.
 	 * @return array associative array of column name => column value.
 	 * @since 3.2.4

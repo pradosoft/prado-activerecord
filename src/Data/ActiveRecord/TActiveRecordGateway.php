@@ -12,6 +12,7 @@ namespace Prado\Data\ActiveRecord;
 
 use Prado\Data\ActiveRecord\Exceptions\TActiveRecordException;
 use Prado\Data\ActiveRecord\Relations\TActiveRecordRelationContext;
+use Prado\Data\Common\IDataSchemalessTableInfo;
 use Prado\Data\Common\TDbMetaData;
 use Prado\Data\Common\TDbTableColumn;
 use Prado\Data\Common\TDbTableInfo;
@@ -61,9 +62,8 @@ use Prado\TComponentReflection;
  * existing key. They need the `insertOrIgnore()` and `upsert()` methods of the PRADO 4.4
  * data gateway command.
  *
- * A table whose metadata is not SQL table information and declares no column besides the
- * primary key, such as a document collection, is schemaless ({@see getIsSchemaless()}).
- * Its insert and update values come from the record's public properties.
+ * A table whose metadata reports itself schemaless, such as a document collection, takes
+ * its insert and update values from the record's public properties ({@see getIsSchemaless()}).
  *
  * @author Wei Zhuo <weizho[at]gmail[dot]com>
  * @since 3.1
@@ -427,11 +427,10 @@ class TActiveRecordGateway extends \Prado\TComponent
 	{
 		$values = [];
 		$tableInfo = $this->getCommand($record)->getTableInfo();
-		$columns = $tableInfo->getColumns();
 		if ($this->getIsSchemaless($tableInfo)) {
-			return $this->getRecordPropertyValues($record);
+			return array_filter($record->getRecordColumnValues(), fn ($value) => $value !== null);
 		}
-		foreach ($columns as $name => $column) {
+		foreach ($tableInfo->getColumns() as $name => $column) {
 			if ($column->getIsExcluded()) {
 				continue;
 			}
@@ -520,23 +519,19 @@ class TActiveRecordGateway extends \Prado\TComponent
 	{
 		$values = [];
 		$tableInfo = $this->getCommand($record)->getTableInfo();
-		$columns = $tableInfo->getColumns();
 		$primary = [];
 		if ($this->getIsSchemaless($tableInfo)) {
-			// The primary key values come from the metadata's key columns, the rest from the properties.
-			foreach ($columns as $name => $column) {
-				if ($column->getIsPrimaryKey()) {
-					$primary[$name] = $record->getColumnValue($name);
-				}
-			}
-			foreach ($this->getRecordPropertyValues($record) as $name => $value) {
-				if (!isset($primary[$name])) {
+			$primaryKeys = $tableInfo->getPrimaryKeys();
+			foreach ($record->getRecordColumnValues() as $name => $value) {
+				if (in_array($name, $primaryKeys, true)) {
+					$primary[$name] = $value;
+				} else {
 					$values[$name] = $value;
 				}
 			}
 			return [$values, $primary];
 		}
-		foreach ($columns as $name => $column) {
+		foreach ($tableInfo->getColumns() as $name => $column) {
 			if ($column->getIsExcluded()) {
 				continue;
 			}
@@ -559,62 +554,21 @@ class TActiveRecordGateway extends \Prado\TComponent
 	}
 
 	/**
-	 * Returns whether a table is schemaless: its metadata is not SQL table information
-	 * and declares no column besides the primary key, as for a document collection
-	 * without a validator. The insert and update values of a schemaless table come
-	 * from {@see getRecordPropertyValues()}.
+	 * Returns whether a table is schemaless: its metadata implements
+	 * {@see IDataSchemalessTableInfo} (PRADO 4.4) and reports `isSchemaless()`, as a
+	 * document collection without a validator does.
+	 *
+	 * | Table | Insert values | Update values |
+	 * |---|---|---|
+	 * | schemaless | {@see TActiveRecord::getRecordColumnValues()} without nulls | the same, with nulls; the metadata's primary keys select the row |
+	 * | any other | the metadata's columns | the metadata's columns |
 	 * @param \Prado\Data\Common\IDataTableInfo $tableInfo the table or collection metadata.
 	 * @return bool true when the values come from the record's properties.
 	 * @since 1.1.0 of prado-activerecord
 	 */
 	protected function getIsSchemaless($tableInfo): bool
 	{
-		return !($tableInfo instanceof TDbTableInfo) && !$this->hasWritableColumns($tableInfo->getColumns());
-	}
-
-	/**
-	 * Returns whether the metadata declares a column besides the primary key.
-	 * @param iterable $columns the {@see \Prado\Data\Common\IDataColumn} list.
-	 * @return bool true if at least one non-primary-key column exists.
-	 * @since 1.1.0 of prado-activerecord
-	 */
-	protected function hasWritableColumns($columns): bool
-	{
-		foreach ($columns as $column) {
-			if (!$column->getIsPrimaryKey()) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	/**
-	 * Returns the values of a record for a schemaless table ({@see getIsSchemaless()}).
-	 * The values are the record's public properties that are not null and not declared
-	 * in its `$RELATIONS`, keyed by property name.
-	 * @param TActiveRecord $record the record.
-	 * @return array field name => value pairs.
-	 * @since 1.1.0 of prado-activerecord
-	 */
-	protected function getRecordPropertyValues(TActiveRecord $record): array
-	{
-		$relations = [];
-		foreach (array_keys((array) $record::$RELATIONS) as $rel) {
-			$relations[strtolower((string) $rel)] = true;
-		}
-		$values = [];
-		// Reflection reads the public properties only; get_object_vars() in this
-		// TComponent would also return the record's protected TComponent state.
-		foreach ((new \ReflectionObject($record))->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
-			$name = $property->getName();
-			if ($property->isStatic() || isset($relations[strtolower($name)])) {
-				continue;
-			}
-			if (($value = $property->getValue($record)) !== null) {
-				$values[$name] = $value;
-			}
-		}
-		return $values;
+		return $tableInfo instanceof IDataSchemalessTableInfo && $tableInfo->isSchemaless();
 	}
 
 	protected function updateAssociatedRecords(TActiveRecord $record, $updateBelongsTo = false)
