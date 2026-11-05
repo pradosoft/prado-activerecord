@@ -2,14 +2,12 @@
 
 namespace Prado\Test\Unit\Data\ActiveRecord\DbSpecific\Cases;
 
-use Prado\Data\DataGateway\TDataGatewayCommand;
 use Prado\Test\Unit\Data\ActiveRecord\DbSpecific\ActiveRecordDbTestCase;
 use Prado\Test\Unit\Data\ActiveRecord\Records\UpsertRecord;
 
 /**
  * Base of the insertOrIgnore() and upsert() cases over the upsert_test table.
  *
- * The cases skip when the PRADO data gateway lacks the method (PRADO before 4.4).
  * Each test starts with an empty table. A driver that lists `merge_transaction`
  * builds a MERGE statement, which needs an active transaction; {@see write()} opens one.
  */
@@ -27,9 +25,6 @@ abstract class ConflictWriteTestCase extends ActiveRecordDbTestCase
 
 	protected function setUp(): void
 	{
-		if (!method_exists(TDataGatewayCommand::class, 'upsert')) {
-			$this->markTestSkipped('The PRADO data gateway has no insertOrIgnore() and upsert() before PRADO 4.4.');
-		}
 		parent::setUp();
 		static::$connection?->createCommand('DELETE FROM upsert_test')->execute();
 	}

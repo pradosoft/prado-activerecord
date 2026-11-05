@@ -96,8 +96,8 @@ class TScaffoldBaseTest extends ScaffoldTestCase
 		$probe = $this->newProbe();
 		$record = ScaffoldItemRecord::finder()->findByPk(2);
 
-		$this->assertEquals(['2', 'item 02', 'note 2', '2.5'], $probe->callGetRecordPropertyValues($record));
-		$this->assertEquals(['2'], $probe->callGetRecordPkValues($record));
+		$this->assertSame([2, 'item 02', 'note 2', 2.5], $probe->callGetRecordPropertyValues($record));
+		$this->assertSame([2], $probe->callGetRecordPkValues($record));
 		$this->assertSame('scaffold_items', $probe->callGetTableInfo()->getTableName());
 	}
 

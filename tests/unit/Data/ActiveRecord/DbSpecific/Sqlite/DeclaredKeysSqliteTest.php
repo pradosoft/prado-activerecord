@@ -12,7 +12,6 @@ use Prado\Data\ActiveRecord\TActiveRecordManager;
 use Prado\Data\Common\IDataSchemalessTableInfo;
 use Prado\Data\Common\IDataTableInfo;
 use Prado\Data\IDataConnection;
-use Prado\Data\Common\TDbCommandBuilder;
 use Prado\Data\TDbConnection;
 
 /**
@@ -205,9 +204,6 @@ class DeclaredKeysSqliteTest extends \PHPUnit\Framework\TestCase
 
 	public function testManyToManyByQueries()
 	{
-		if (!method_exists(TDbCommandBuilder::class, 'createIndexedFindCommand')) {
-			$this->markTestSkipped('The command builder has no createIndexedFindCommand() before PRADO 4.4.');
-		}
 		foreach ([1 => [1, 2], 2 => [], 3 => [2]] as $id => $tagIds) {
 			$post = DkPost::finder()->findByPk($id);
 			$handler = new DkQueriesAssociation(new TActiveRecordRelationContext($post, 'tags', DkPost::$RELATIONS['tags']), new TActiveRecordCriteria());
@@ -222,9 +218,6 @@ class DeclaredKeysSqliteTest extends \PHPUnit\Framework\TestCase
 	 */
 	private function useSchemalessAssociation(): void
 	{
-		if (!interface_exists(IDataSchemalessTableInfo::class)) {
-			$this->markTestSkipped('IDataSchemalessTableInfo is part of PRADO 4.4.');
-		}
 		$gateway = new DkSchemalessGateway(TActiveRecordManager::getInstance());
 		$gateway->wrap = fn (IDataTableInfo $info) => new class ($info) implements IDataTableInfo, IDataSchemalessTableInfo {
 			public function __construct(private IDataTableInfo $info)

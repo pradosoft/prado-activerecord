@@ -85,7 +85,7 @@ class TScaffoldViewTest extends ScaffoldTestCase
 		}
 
 		$this->assertEditShown($view);
-		$this->assertEquals(['2'], $view->getEditView()->getRecordPk());
+		$this->assertSame([2], $view->getEditView()->getRecordPk());
 	}
 
 	public function testNewCommand_showsAnEmptyEditView()

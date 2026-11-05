@@ -4,7 +4,6 @@ namespace Prado\Test\Unit\Data\ActiveRecord\Scaffold\InputBuilder;
 
 use Prado\Data\ActiveRecord\Scaffold\InputBuilder\TMssqlScaffoldInput;
 use Prado\Data\Common\SqlSrv\TSqlSrvTableColumn;
-use Prado\Data\Common\TDbTableColumn;
 
 /**
  * Covers the SQL Server column type to input control mapping and the value read back.
@@ -12,13 +11,9 @@ use Prado\Data\Common\TDbTableColumn;
  */
 class TMssqlScaffoldInputTest extends ScaffoldInputTestCase
 {
-	/**
-	 * PRADO 4.4 (pradosoft/prado#1088) removes the Mssql metadata classes in favor of SqlSrv; earlier PRADO has only Mssql.
-	 */
-	private function column(string $type, array $info = []): TDbTableColumn
+	private function column(string $type, array $info = []): TSqlSrvTableColumn
 	{
-		$class = class_exists(TSqlSrvTableColumn::class) ? TSqlSrvTableColumn::class : 'Prado\\Data\\Common\\Mssql\\TMssqlTableColumn';
-		return new $class($this->columnInfo($type, $info));
+		return new TSqlSrvTableColumn($this->columnInfo($type, $info));
 	}
 
 	public static function controlProvider(): array

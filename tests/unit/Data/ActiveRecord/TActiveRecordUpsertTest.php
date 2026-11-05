@@ -169,9 +169,6 @@ class TActiveRecordUpsertTest extends \PHPUnit\Framework\TestCase
 
 	public function testSchemalessSaveWritesTheRecordProperties()
 	{
-		if (!interface_exists(IDataSchemalessTableInfo::class)) {
-			$this->markTestSkipped('IDataSchemalessTableInfo is part of PRADO 4.4.');
-		}
 		$key = new class () {
 			public function getIsPrimaryKey()
 			{

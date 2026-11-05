@@ -384,10 +384,10 @@ class GatewaySqliteTest extends \PHPUnit\Framework\TestCase
 	{
 		$connection = $this->database('x');
 		$one = (new GwItem([], $connection))->findByPk(1);
-		$copy = new GwItem(['id' => $one->id, 'name' => 'changed'], $connection);
+		$copy = new GwItem(['id' => 1, 'name' => 'changed'], $connection);
 		$this->assertTrue($one->equals($copy));
 		$this->assertTrue($one->equals($copy, true));
-		$copy->id = is_int($one->id) ? (string) $one->id : (int) $one->id;
+		$copy->id = '1';
 		$this->assertTrue($one->equals($copy));
 		$this->assertFalse($one->equals($copy, true));
 	}
@@ -395,8 +395,8 @@ class GatewaySqliteTest extends \PHPUnit\Framework\TestCase
 	public function testToArrayAndToJson()
 	{
 		$record = (new GwItem([], $this->database('json')))->findByPk(1);
-		$this->assertEquals(['id' => '1', 'name' => 'json', 'note' => null], $record->toArray());
-		$this->assertEquals(['id' => '1', 'name' => 'json', 'note' => null], json_decode($record->toJSON(), true));
+		$this->assertSame(['id' => 1, 'name' => 'json', 'note' => null], $record->toArray());
+		$this->assertSame('{"id":1,"name":"json","note":null}', $record->toJSON());
 	}
 
 	public function testExcludedColumn_isNotWritten()

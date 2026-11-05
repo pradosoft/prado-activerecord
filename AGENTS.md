@@ -136,7 +136,7 @@ The extension participates in the host PRADO application through `TActiveRecordC
 | `db-mysql` | `DbSpecific/Mysql`: the database cases over `prado_unitest` | Yes |
 | `db-pgsql`, `db-sqlsrv`, `db-firebird`, `db-oracle`, `db-ibm` | `DbSpecific/<Driver>`: the same cases over PostgreSQL, SQL Server, Firebird, Oracle, IBM DB2 | Yes, one CI job each |
 
-The cases are abstract classes in `DbSpecific/Cases/`; each driver directory subclasses every case and adds its `<Driver>ConnectionTrait` (setup helper, database, connection settings, unsupported features). A case calls `requireFeature()` to skip on a driver that lacks `composite_pk_in` (SQL Server, Firebird, DB2), `identity` (Oracle), or `null_parameters` (DB2). `merge_transaction` (SQL Server, Oracle, DB2, Firebird) marks a driver whose `insertOrIgnore()` and `upsert()` build a MERGE statement, which needs a transaction; those cases open one there, and skip on a PRADO before 4.4.
+The cases are abstract classes in `DbSpecific/Cases/`; each driver directory subclasses every case and adds its `<Driver>ConnectionTrait` (setup helper, database, connection settings, unsupported features). A case calls `requireFeature()` to skip on a driver that lacks `composite_pk_in` (SQL Server, Firebird, DB2), `identity` (Oracle), or `null_parameters` (DB2). `merge_transaction` (SQL Server, Oracle, DB2, Firebird) marks a driver whose `insertOrIgnore()` and `upsert()` build a MERGE statement, which needs a transaction; those cases open one there.
 
 ### Adding a Test
 
