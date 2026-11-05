@@ -61,7 +61,7 @@ class TSqlSrvScaffoldInput extends TScaffoldInputCommon
 				return $this->getDateTimeValue($container, $column, $record);
 			default:
 				$value = $this->getDefaultControlValue($container, $column, $record);
-				if (trim($value) === '' && $column->getAllowNull()) {
+				if (trim((string) $value) === '' && $column->getAllowNull()) {
 					return null;
 				} else {
 					return $value;
