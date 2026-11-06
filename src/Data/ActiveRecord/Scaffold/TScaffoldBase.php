@@ -17,6 +17,7 @@ use Prado\Data\ActiveRecord\TActiveRecord;
 use Prado\Data\Common\TDbTableInfo;
 use Prado\Exceptions\TConfigurationException;
 use Prado\Prado;
+use Prado\TComponentReflection;
 use Prado\TPropertyValue;
 use Prado\Web\UI\TTemplateControl;
 
@@ -208,7 +209,7 @@ abstract class TScaffoldBase extends TTemplateControl
 		parent::onPreRender($param);
 		if ($this->getEnableDefaultStyle()) {
 			$style = $this->getDefaultStyle() . '.css';
-			$classFile = (new \ReflectionClass($this))->getFileName();
+			$classFile = TComponentReflection::getReflectionClassByType($this)->getFileName();
 			$className = is_file(dirname($classFile) . DIRECTORY_SEPARATOR . $style) ? $this::class : self::class;
 			$url = $this->publishAsset($style, $className);
 			$this->getPage()->getClientScript()->registerStyleSheetFile($url, $url);

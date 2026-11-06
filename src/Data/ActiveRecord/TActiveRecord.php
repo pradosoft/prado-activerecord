@@ -241,6 +241,11 @@ abstract class TActiveRecord extends \Prado\TComponent implements IViewDataModel
 	private static $_columnMapping = [];
 
 	/**
+	 * @var array<string, string[]> per class, the public instance properties in declaration order.
+	 */
+	private static $_propertyNames = [];
+
+	/**
 	 * This static variable defines the relationships.
 	 * The keys are public variable/property names defined in the AR class.
 	 * Each value is an array, e.g. array(self::HAS_MANY, 'PlayerRecord').
@@ -388,17 +393,13 @@ abstract class TActiveRecord extends \Prado\TComponent implements IViewDataModel
 	{
 		$className = $this::class;
 		if (!isset(self::$_columnMapping[$className])) {
-			$class = static::getReflectionClass();
 			// Every public instance property, keyed by its lower case name.
 			$map = [];
-			foreach ($class->getProperties(ReflectionProperty::IS_PUBLIC) as $prop) {
-				if (!$prop->isStatic()) {
-					$name = $prop->getName();
-					$map[strtolower($name)] = $name;
-				}
+			foreach ($this->getPublicPropertyNames() as $name) {
+				$map[strtolower($name)] = $name;
 			}
 			// COLUMN_MAPPING entries take precedence.
-			foreach ($class->getStaticPropertyValue('COLUMN_MAPPING') as $col => $prop) {
+			foreach (static::getReflectionClass()->getStaticPropertyValue('COLUMN_MAPPING') as $col => $prop) {
 				$map[strtolower($col)] = $prop;
 			}
 			self::$_columnMapping[$className] = $map;
@@ -1265,11 +1266,8 @@ abstract class TActiveRecord extends \Prado\TComponent implements IViewDataModel
 	public function getRecordColumnValues(): array
 	{
 		$values = [];
-		foreach (static::getReflectionClass()->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
-			$name = $property->getName();
-			if (!$property->isStatic() && !$this->hasRecordRelation($name)) {
-				$values[$name] = $this->$name;
-			}
+		foreach ($this->getViewColumnNames() as $name) {
+			$values[$name] = $this->$name;
 		}
 		return $values;
 	}
@@ -1356,12 +1354,23 @@ abstract class TActiveRecord extends \Prado\TComponent implements IViewDataModel
 	 */
 	protected function getViewColumnNames(): array
 	{
-		$names = [];
-		foreach (static::getReflectionClass()->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
-			if (!$property->isStatic() && !$this->hasRecordRelation($property->getName())) {
-				$names[] = $property->getName();
-			}
-		}
-		return $names;
+		return array_values(array_filter($this->getPublicPropertyNames(), fn ($name) => !$this->hasRecordRelation($name)));
+	}
+
+	/**
+	 * Returns the public instance properties of the record class, read once per class
+	 * from the cached {@see \Prado\TComponentReflection} class reflection.
+	 * @return string[] property names in declaration order
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	private function getPublicPropertyNames(): array
+	{
+		return self::$_propertyNames[$this::class] ??= array_values(array_map(
+			fn (ReflectionProperty $property) => $property->getName(),
+			array_filter(
+				static::getReflectionClass()->getProperties(ReflectionProperty::IS_PUBLIC),
+				fn (ReflectionProperty $property) => !$property->isStatic()
+			)
+		));
 	}
 }
