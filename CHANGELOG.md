@@ -33,6 +33,7 @@ The Active Record classes follow PRADO's Data layer renovation for 4.4 (pradosof
 
 ### Fixed
 
+- `TActiveRecord::copyFrom()` copies an object's public properties only. It read the object with `get_object_vars()`, which, called in a `TComponent`, also returned the protected properties of a `TComponent` source, so copying from another record took over its record state and connection.
 - `docs/scaffold.md` lists the `sqlsrv` and `dblib` drivers under `TSqlSrvScaffoldInput`.
 
 ## [1.0.0] - 2026-10-25

@@ -424,7 +424,9 @@ abstract class TActiveRecord extends \Prado\TComponent implements IViewDataModel
 
 	/**
 	 * Copies data from an array or another object into the record.
-	 * If $data is an object, its public properties are extracted.
+	 * If $data is an object, its initialized public instance properties are extracted;
+	 * protected and private properties, such as another record's state and connection,
+	 * are not.
 	 * Each key-value pair is set using {@see setColumnValue()}.
 	 * @param mixed $data associative array or object with public properties.
 	 * @throws TActiveRecordException if data is not array or object.
@@ -432,7 +434,7 @@ abstract class TActiveRecord extends \Prado\TComponent implements IViewDataModel
 	public function copyFrom($data)
 	{
 		if (is_object($data)) {
-			$data = get_object_vars($data);
+			$data = $this->getPublicObjectValues($data);
 		}
 		if (!is_array($data)) {
 			throw new TActiveRecordException('ar_data_invalid', $this::class);
@@ -440,6 +442,25 @@ abstract class TActiveRecord extends \Prado\TComponent implements IViewDataModel
 		foreach ($data as $name => $value) {
 			$this->setColumnValue($name, $value);
 		}
+	}
+
+	/**
+	 * Returns the initialized public instance properties of an object, keyed by name.
+	 * get_object_vars() is not used: called in this class, which is a TComponent, it also
+	 * returns the protected properties of a TComponent source.
+	 * @param object $object the source object.
+	 * @return array property name => value.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	private function getPublicObjectValues(object $object): array
+	{
+		$values = [];
+		foreach ((new \ReflectionObject($object))->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
+			if (!$property->isStatic() && $property->isInitialized($object)) {
+				$values[$property->getName()] = $property->getValue($object);
+			}
+		}
+		return $values;
 	}
 
 	/**
