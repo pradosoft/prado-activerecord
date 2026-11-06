@@ -140,3 +140,13 @@ CREATE TABLE `skills` (
   `name` varchar(50) NOT NULL,
   PRIMARY KEY  (`skill_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+DROP TABLE IF EXISTS `upsert_test`;
+CREATE TABLE `upsert_test` (
+  `upsert_id` INT NOT NULL AUTO_INCREMENT,
+  `username` VARCHAR(100) NOT NULL,
+  `score` INT NOT NULL DEFAULT 0,
+  `note` VARCHAR(100) NULL,
+  PRIMARY KEY (`upsert_id`),
+  UNIQUE KEY `uq_upsert_test_username` (`username`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;

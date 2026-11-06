@@ -12,7 +12,7 @@ This page installs the package, registers the module, and runs one record class 
 composer require pradosoft/prado-activerecord
 ```
 
-The package requires PHP 8.1 or later and PRADO 4.3.3 or later.
+The package requires PHP 8.2 or later and PRADO 4.4 or later.
 
 ---
 

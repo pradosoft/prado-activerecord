@@ -68,3 +68,11 @@ CREATE TABLE users (
 );
 
 INSERT INTO users VALUES ('admin', '123456', 'Joe.Dalton@somewhere.com', 'Joe', 'Dalton', 'Ceo', '+1 234 567890', '+1 234 567890', 1, 1, 'Dear', 'fav color', 'red');
+
+CREATE TABLE upsert_test (
+  upsert_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  username VARCHAR(100) NOT NULL,
+  score INTEGER NOT NULL DEFAULT 0,
+  note VARCHAR(100) DEFAULT NULL,
+  CONSTRAINT uq_upsert_test_username UNIQUE (username)
+);

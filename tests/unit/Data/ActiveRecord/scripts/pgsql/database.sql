@@ -80,3 +80,13 @@ CREATE TABLE users (
 );
 
 INSERT INTO users VALUES ('admin', '123456', 'Joe.Dalton@somewhere.com', 'Joe', 'Dalton', 'Ceo', '+1 234 567890', '+1 234 567890', TRUE, 1, 'Dear', 'fav color', 'red');
+
+DROP TABLE IF EXISTS upsert_test CASCADE;
+CREATE TABLE upsert_test (
+  upsert_id SERIAL NOT NULL,
+  username VARCHAR(100) NOT NULL,
+  score INTEGER NOT NULL DEFAULT 0,
+  note VARCHAR(100) DEFAULT NULL,
+  PRIMARY KEY (upsert_id),
+  CONSTRAINT uq_upsert_test_username UNIQUE (username)
+);

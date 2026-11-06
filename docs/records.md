@@ -67,13 +67,14 @@ The name resolves against the record's connection. A missing table or view raise
 Every column that a query returns needs a place to go. The record maps a column name to a property through `getColumnValue()` and `setColumnValue()`:
 
 - The column name is a key in the static `$COLUMN_MAPPING` array → the mapped property name is used.
+- The column name matches a public property without regard to case → that property is used. A lower case property receives the upper case columns of Firebird, Oracle, and DB2.
 - Otherwise → the column name is the property name.
 
 The property is a public property, or a `TComponent` property defined by a getter/setter pair. A column with neither throws `TInvalidOperationException` (`component_property_undefined`) when a row is loaded. Properties that are not columns are allowed; the gateway reads only the columns the table metadata lists.
 
 ### Column mapping
 
-`$COLUMN_MAPPING` keys are physical column names and values are property names. Columns whose names already match are left out.
+`$COLUMN_MAPPING` keys are physical column names and values are property names. The keys match without regard to case. Columns whose names already match a property are left out.
 
 ```php
 class UserRecord extends TActiveRecord
@@ -106,6 +107,48 @@ Finder conditions and dynamic finder names use the physical column names (`findB
 
 After an insert, a column with a sequence (auto-increment, serial) receives the last insert id.
 
+A table whose metadata implements `IDataSchemalessTableInfo` and reports `isSchemaless()`, such as a document collection without a validator, is schemaless. Its values come from `getRecordColumnValues()`: the record's public properties that are not relations, keyed by property name. An insert leaves out `null` values; an update writes them, and the metadata's primary keys select the row.
+
+### Insert or ignore, and upsert
+
+`insertOrIgnore($conflictColumns = null)` inserts the record unless the row conflicts with an existing key. `upsert($updateData = null, $conflictColumns = null)` inserts the record, or updates the row it conflicts with. PRADO's data gateway builds the statement for each driver.
+
+| `$updateData` | A conflict updates |
+|---|---|
+| `null` | every column except the conflict columns, from the record |
+| `['email', 'status']` | those columns, from the record |
+| `['email' => 'x@example.com']` | those columns, to the given values |
+| `['email', 'status' => 'active']` | both forms |
+| `[]` | nothing; the call behaves as `insertOrIgnore()` |
+
+`$conflictColumns` names the unique columns that detect the conflict; `null` uses the primary key. SQL Server, Oracle, DB2, and Firebird match their `MERGE` on these columns, so a table with an identity primary key needs them. A record class sets defaults with two constants:
+
+| Constant | Default | Use |
+|---|---|---|
+| `CONFLICT_COLUMNS` | `null` (primary key) | Replaced by a non-null `$conflictColumns` argument |
+| `UPSERT_UPDATE_DATA` | `null` (every other column) | A non-null `$updateData` argument is merged over it with `array_merge()` |
+
+```php
+class UserRecord extends TActiveRecord
+{
+    const TABLE = 'users';
+    const CONFLICT_COLUMNS = ['email'];
+    const UPSERT_UPDATE_DATA = ['last_login'];
+    // ...
+}
+
+$user->upsert();                         // conflicts on email, updates last_login
+$user->upsert(['status' => 'active']);   // updates last_login and status
+```
+
+Both methods raise `OnInsert`, on the update path too, and return the last insert id, `true` when no id is available, or `false` when no row is written or `OnInsert` cancels the call. A written row marks the record Loaded. SQL Server, Oracle, DB2, and Firebird build a `MERGE` statement and need an active transaction:
+
+```php
+$transaction = $user->getDbConnection()->beginTransaction();
+$user->upsert();
+$transaction->commit();
+```
+
 ---
 
 ## `finder()`
@@ -115,6 +158,7 @@ After an insert, a column with a sequence (auto-increment, serial) receives the 
 - Finder methods (`find`, `findAll`, `count`, `deleteAll`, and the rest) are instance methods, called on the finder or on any record object.
 - Event handlers attached to the finder are class-wide: they fire for every query that finder runs. See [Events](events.md).
 - The finder is never saved. Records a finder loads are new objects.
+- A finder without its own connection uses the manager's current connection. `UserRecord::finder()->setDbConnection($db)` binds the finder, and the records it loads, to `$db`.
 
 ---
 
@@ -143,7 +187,7 @@ Each record carries a state that decides what `save()` and `delete()` do.
 | State | Constant | How a record gets it |
 |---|---|---|
 | New | `TActiveRecord::STATE_NEW` | `new UserRecord()` |
-| Loaded | `TActiveRecord::STATE_LOADED` | Returned by a finder, or a new record after a successful `save()` |
+| Loaded | `TActiveRecord::STATE_LOADED` | Returned by a finder, or a new record after a successful `save()`, `insertOrIgnore()`, or `upsert()` |
 | Deleted | `TActiveRecord::STATE_DELETED` | After a successful `delete()` |
 
 | Call | New | Loaded | Deleted |
@@ -199,8 +243,7 @@ Every other name follows `TComponent` rules: a public property, a getter/setter 
 `toArray()` lists table columns, so extra properties and relation values are left out. `getViewData()` lists declared
 properties, so it needs no database connection for the columns and includes the relations.
 
-`getViewData()` and `setViewData()` are the `Prado\Web\UI\IViewDataModel` contract of PRADO 4.4, provided by name so a
-record also runs on PRADO 4.3. `TTemplateControl::tryToUpdateView()` and `tryToUpdateModel()` call them; see
+`TActiveRecord` implements `Prado\Web\UI\IViewDataModel` with `getViewData()` and `setViewData()`. `TTemplateControl::tryToUpdateView()` and `tryToUpdateModel()` call them; see
 [integration.md](integration.md#binding-records-to-template-controls).
 
 ---
@@ -229,12 +272,12 @@ foreach (UserRecord::finder()->getRecordTableInfo()->getColumns() as $name => $c
 
 A record serializes with `serialize()` and survives a session or cache round trip.
 
-- `__sleep()` drops the connection, so credentials and the PDO handle are not stored.
+- `_getZappableSleepProps()` drops the connection, so credentials and the PDO handle are not stored.
 - The record state, column values, and relation values are stored.
 - `__wakeup()` rebuilds the column mapping and relation tables for the class.
 - After `unserialize()`, `getDbConnection()` returns the class override or the manager connection.
 
-A subclass that overrides `__sleep()` calls `parent::__sleep()` and filters that list.
+A subclass that leaves out more properties overrides `_getZappableSleepProps(&$exprops)`, calls the parent first, and appends to `$exprops`.
 
 ---
 

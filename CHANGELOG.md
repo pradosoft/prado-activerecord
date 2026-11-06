@@ -6,19 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+The Active Record classes follow PRADO's Data layer renovation for 4.4 (pradosoft/prado#1088), and keep this package's fixes.
+
 ### Added
 
+- `TActiveRecord::insertOrIgnore($conflictColumns)` and `upsert($updateData, $conflictColumns)`, the class constants `CONFLICT_COLUMNS` for the conflict target of both and `UPSERT_UPDATE_DATA` for the defaults of `upsert()`, and `TActiveRecordGateway::insertOrIgnore()` and `upsert()`. Both raise `OnInsert` and return what `insert()` returns. They call `TDataGatewayCommand::insertOrIgnore()` and `upsert()`; `insertOrIgnore()` with conflict columns calls `upsert()` with no update data. SQL Server, Oracle, DB2, and Firebird build a `MERGE` statement and need an active transaction; their `MERGE` matches on the conflict columns, so a table with an identity primary key needs them. When the driver reports no identity value after a `MERGE`, as DB2 and Firebird do, the record reads it from the row that matches the conflict columns. The `InsertOrIgnoreTestCase` and `UpsertTestCase` database cases run on every driver over the new `upsert_test` table. See [Record Classes](docs/records.md#insert-or-ignore-and-upsert).
+- Support for stores without foreign key metadata, such as a document store. A relation whose metadata holds no matching key uses the columns it names: `'author_id'` maps to the referenced primary key, and a `MANY_TO_MANY` `'pivot.(sourceFk, foreignFk)'` names both association columns. A `MANY_TO_MANY` relation whose association table is schemaless, or whose command builder cannot build a join, loads with two queries joined in PHP; a schemaless association table needs both columns named (`ar_mn_relation_keys_required`). A table whose metadata implements `IDataSchemalessTableInfo` and reports `isSchemaless()` writes the record's public non-relation properties, which the new `TActiveRecord::getRecordColumnValues()` returns (`TActiveRecordGateway::getIsSchemaless()`). Ported from the schemaless store work in PRADO's Data layer.
 - `TOracleScaffoldInput` builds Scaffold inputs for Oracle columns. `TScaffoldInputBase::createInputBuilder()` selects it for the `oci` driver. Ported from PRADO pull request #1369, which landed after the baseline.
 
 ### Changed
 
+- The package requires PRADO 4.4 (`"pradosoft/prado": "^4.4@dev"` until 4.4 is tagged) and therefore PHP 8.2. Version 1.0.0 remains the release for PRADO 4.3.3 and PHP 8.1.
+- `TActiveRecord` implements `Prado\Web\UI\IViewDataModel`. `getViewData()` and `setViewData()` were matched by name so that a record also ran on PRADO 4.3.
+- Column names match record properties without regard to case. Firebird, Oracle, and DB2 return upper case column names, which now fill lower case properties without `$COLUMN_MAPPING` entries. `$COLUMN_MAPPING` keys also match without regard to case and take precedence.
+- A record or finder without its own connection uses the manager's current connection. `getDbConnection()` stored the manager's connection on first use, so a finder kept the first connection after the manager's changed. A connection set with `setDbConnection()` is kept.
+- A `MANY_TO_MANY` association table followed by two columns, as in `'player_skills.(player_id, skill_id)'`, names the association column to each side. Since 1.0.0 the two names were association data columns.
+- `TActiveRecordGateway` reads table metadata through the connection's `getDbMetaData()`, so a driver that is not a `TDbConnection` resolves its metadata class.
+- Finder criteria may be any `IDataCriteria`, of which `TSqlCriteria` is one. The finder still works on a copy.
+- `TActiveRecord` drops its connection from serialization through `_getZappableSleepProps()`.
+- `TMssqlScaffoldInput` is renamed `TSqlSrvScaffoldInput`, after PRADO 4.4's `Prado\Data\Common\SqlSrv` classes; `mssql` names a PHP extension, not a PRADO driver. `createInputBuilder()` returns it for `mssql`, `sqlsrv`, and `dblib`.
+- The tests pass on PRADO 4.4, whose SQLite connection returns native integer types and enforces foreign keys, whose `IDataConnection` adds `getLastTransaction()`, `commit()`, `rollback()`, and `getDbMetaData()`, and which replaces the `Prado\Data\Common\Mssql` classes with `Prado\Data\Common\SqlSrv`.
 - `messages.txt` entries are ICU MessageFormat patterns, as PRADO 4.4 formats them (PRADO pull request #1437). A placeholder in quotes is written `''{0}''`; `'{0}'` renders the literal `{0}`. The `ar_primary_key_is_scalar` message closes the quote around the invalid value.
 - The database tests run the composite primary key cases on SQLite and the identity cases on Firebird. PRADO pull request #1360 fixed the SQLite composite key metadata and the Firebird identity read-back, so neither gate remains.
+- The SQL Server database tests are under `DbSpecific/SqlSrv` as `SqlSrv*` classes, which connect through `PradoUnit::setupSqlSrvConnection()`, as in PRADO and prado-sqlmap. The extra-parameter case skips on SQL Server and Oracle, where PRADO 4.4 raises no error for an unused positional parameter.
 - The test bootstrap gives the application an unbuffered response. Rendering a form reads the CSRF token, which bootstraps the default response module and its output buffer.
 
 ### Fixed
 
-- `docs/scaffold.md` lists the `sqlsrv` and `dblib` drivers under `TMssqlScaffoldInput`.
+- `TActiveRecord::copyFrom()` copies an object's public properties only. It read the object with `get_object_vars()`, which, called in a `TComponent`, also returned the protected properties of a `TComponent` source, so copying from another record took over its record state and connection.
+- `docs/scaffold.md` lists the `sqlsrv` and `dblib` drivers under `TSqlSrvScaffoldInput`.
 
 ## [1.0.0] - 2026-10-25
 
@@ -38,6 +54,7 @@ First standalone release. ActiveRecord moves out of the PRADO framework (`framew
 
 ### Changed
 
+- `TScaffoldInputBase::createInputBuilder()` raises `fxActiveRecordScaffoldInputClass` before it selects a built-in builder, so a plugin connection that reuses a built-in driver name (`mysqli`, `sqlsrv`) supplies its own builder. A handler returns null for a connection it does not serve.
 - Tests are grouped by what they need. `tests/unit/Data/ActiveRecord/DbSpecific/Mysql` (the `db-mysql` suite) holds the tests that read and write the `prado_unitest` MySQL database; `DbSpecific/Sqlite` (the `db-sqlite` suite) holds the tests that use the bundled SQLite files in `tests/unit/Data/ActiveRecord/sqlite`; everything else is the `unit` suite and needs no database. `TScaffoldInputBaseTest` moves from the framework's `tests/unit/Data/DbCommon` to `tests/unit/Data/ActiveRecord/Scaffold/InputBuilder`.
 - The database tests run on every PDO driver PRADO supports. The tests are abstract cases under `tests/unit/Data/ActiveRecord/DbSpecific/Cases/`; each driver directory (`Mysql`, `Sqlite`, `Pgsql`, `Sqlsrv`, `Firebird`, `Oracle`, `Ibm`) subclasses every case with a connection trait over `PradoUnitActiveRecordConnectionTrait`, and `tests/unit/Data/ActiveRecord/scripts/<driver>/database.sql` holds the same schema per dialect, cut from the framework's `tests/initdb_mysql.sql`. The fixture column `order` is `sort_key` and the table `Users` is `users`, so the schema needs no quoting on any driver, and the records map upper case column names for Firebird, Oracle, and DB2. CI runs one job per database, with the setup scripts under `.github/scripts/`. A case skips with the reason on a driver that lacks a feature: composite primary keys on SQLite, whose framework metadata reports only the first key column; the composite-key `IN` form on SQL Server, Firebird, and DB2; identity read-back on Oracle and Firebird; NULL parameters on DB2.
 

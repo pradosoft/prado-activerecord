@@ -250,7 +250,7 @@ The condition comes from the command builder's `getSearchExpression()`: the text
 | `mysql`, `mysqli` | `TMysqlScaffoldInput` |
 | `sqlite`, `sqlite2` | `TSqliteScaffoldInput` |
 | `pgsql` | `TPgsqlScaffoldInput` |
-| `mssql`, `sqlsrv`, `dblib` | `TMssqlScaffoldInput` |
+| `mssql`, `sqlsrv`, `dblib` | `TSqlSrvScaffoldInput` |
 | `ibm` | `TIbmScaffoldInput` |
 | `firebird`, `interbase` | `TFirebirdScaffoldInput` |
 | `oci` | `TOracleScaffoldInput` |
@@ -279,18 +279,27 @@ The other builders compare the column type name reported by their database:
 |---|---|---|---|---|---|---|---|
 | `TSqliteScaffoldInput` | `boolean` | `int`, `integer`, `tinyint`, `smallint`, `mediumint`, `bigint` | `decimal`, `double`, `float` | `date` | `time` | `datetime`, `timestamp` | `text` and `blob` variants; `year` gives the year list |
 | `TPgsqlScaffoldInput` | `boolean` | `smallint`, `integer`, `bigint` | `decimal`, `numeric`, `real`, `double precision` | `date` | `time without time zone` | `timestamp without time zone` | `text` |
-| `TMssqlScaffoldInput` | `bit` | `smallint`, `int`, `bigint`, `tinyint` | `decimal`, `float`, `money`, `numeric`, `real`, `smallmoney` | | | `datetime`, `smalldatetime` | `text` |
+| `TSqlSrvScaffoldInput` | `bit` | `smallint`, `int`, `bigint`, `tinyint` | `decimal`, `float`, `money`, `numeric`, `real`, `smallmoney` | | | `datetime`, `smalldatetime` | `text` |
 | `TIbmScaffoldInput` | | `smallint`, `integer`, `bigint` | `decimal`, `numeric`, `real`, `float`, `double` | `date` | `time` | `timestamp` | `char`, `varchar` |
 | `TFirebirdScaffoldInput` | `BOOLEAN` | `SMALLINT`, `INTEGER`, `BIGINT` | `FLOAT`, `DOUBLE PRECISION`, `DECIMAL`, `NUMERIC`, `DECFLOAT(16)`, `DECFLOAT(34)` | `DATE` | `TIME`, `TIME WITH TIME ZONE` | `TIMESTAMP`, `TIMESTAMP WITH TIME ZONE` | `CHAR`, `VARCHAR`, `TEXT`, `BLOB` |
 | `TOracleScaffoldInput` | `BOOLEAN` | `INTEGER`, `INT`, `SMALLINT`; `NUMBER`, `DECIMAL`, `NUMERIC` with scale 0 | `NUMBER`, `DECIMAL`, `NUMERIC` with another or no scale; `FLOAT`, `BINARY_FLOAT`, `BINARY_DOUBLE`, `REAL`, `DOUBLE PRECISION` | | | `DATE`, `TIMESTAMP`, `TIMESTAMP WITH TIME ZONE`, `TIMESTAMP WITH LOCAL TIME ZONE` | `CLOB`, `NCLOB`, `LONG`, `BLOB` |
 
-Any other type gives the plain `TTextBox`. `TMssqlScaffoldInput` disables the text box for excluded columns and stores an empty text box as `NULL` when the column allows it.
+Any other type gives the plain `TTextBox`. `TSqlSrvScaffoldInput` disables the text box for excluded columns and stores an empty text box as `NULL` when the column allows it.
 
 The primary input of each item has the ID `scaffold_input` (`IScaffoldInput::DEFAULT_ID`) and the label's `ForControl` points at it.
 
-### Supplying a builder for another driver
+### Supplying a builder for another driver or connection
 
-When no built-in builder matches, `createInputBuilder()` raises the global event `fxActiveRecordScaffoldInputClass` on the connection. The sender is the connection and the parameter is the driver name. A handler returns the fully qualified name of a class that implements `IScaffoldInput`. The first non-null return value is instantiated. A returned class that does not implement the interface → `TConfigurationException` `ar_not_input_base`.
+Before it selects a built-in builder, `createInputBuilder()` raises the global event `fxActiveRecordScaffoldInputClass` on the connection. The sender is the connection and the parameter is the driver name. A handler returns the fully qualified name of a class that implements `IScaffoldInput`, or null for a connection it does not serve. The first non-null return value is instantiated.
+
+| Handler results | Builder |
+|---|---|
+| a class implementing `IScaffoldInput` | that class, for any driver name |
+| a value that is not such a class | `TConfigurationException` `ar_not_input_base` |
+| none, built-in driver | the built-in builder for the driver |
+| none, other driver | `TConfigurationException` `ar_invalid_database_driver` |
+
+A data plugin whose connection reuses a built-in driver name (`mysqli`, `sqlsrv`) supplies its own builder this way. Its handler checks the sender's class, so other connections with that driver name keep the built-in builder.
 
 ```php
 use Prado\Data\ActiveRecord\Scaffold\InputBuilder\TScaffoldInputCommon;
