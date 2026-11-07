@@ -35,6 +35,7 @@ The Active Record classes follow PRADO's Data layer renovation for 4.4 (pradosof
 
 - `TActiveRecord::copyFrom()` copies an object's public properties only. It read the object with `get_object_vars()`, which, called in a `TComponent`, also returned the protected properties of a `TComponent` source, so copying from another record took over its record state and connection.
 - `docs/scaffold.md` lists the `sqlsrv` and `dblib` drivers under `TSqlSrvScaffoldInput`.
+- The Scaffold edit view saves a blank text box as `NULL` for a nullable column whose PHP type is not `string`, such as an integer or decimal column. It saved an empty string, which PostgreSQL rejects for numeric types (#10).
 
 ## [1.0.0] - 2026-10-25
 

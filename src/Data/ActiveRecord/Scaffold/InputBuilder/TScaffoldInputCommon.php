@@ -72,10 +72,23 @@ class TScaffoldInputCommon extends TScaffoldInputBase
 	}
 
 	/**
-	 * @param mixed $container
-	 * @param mixed $column
-	 * @param mixed $record
-	 * @return bool|string
+	 * Reads the value of the default input control.
+	 *
+	 * | Input | Result |
+	 * |---|---|
+	 * | `TCheckBox` | its checked state |
+	 * | blank `TTextBox`, nullable column with a non-string PHP type | `null` |
+	 * | other `TTextBox` | its text |
+	 * | no default input | `''` |
+	 *
+	 * A blank text box for a nullable numeric or boolean column is stored as `NULL`,
+	 * because an empty string is not a valid value for those types on most databases.
+	 * A nullable string column keeps the empty string.
+	 *
+	 * @param \Prado\Web\UI\TControl $container the container of the input control.
+	 * @param \Prado\Data\Common\TDbTableColumn $column the column metadata.
+	 * @param \Prado\Data\ActiveRecord\TActiveRecord $record the active record instance.
+	 * @return null|bool|string the control value.
 	 */
 	protected function getDefaultControlValue($container, $column, $record)
 	{
@@ -83,10 +96,27 @@ class TScaffoldInputCommon extends TScaffoldInputBase
 		if ($control instanceof TCheckBox) {
 			return $control->getChecked();
 		} elseif ($control instanceof TTextBox) {
-			return $control->getText();
+			$text = $control->getText();
+			if ($this->getIsNullForBlankText($text, $column)) {
+				return null;
+			}
+			return $text;
 		} else {
 			return '';
 		}
+	}
+
+	/**
+	 * Determines whether blank text box input is stored as `NULL` for the column.
+	 *
+	 * @param string $text the text box input.
+	 * @param \Prado\Data\Common\TDbTableColumn $column the column metadata.
+	 * @return bool true when the text is blank, the column allows null, and its PHP type is not `'string'`.
+	 * @since 1.1.0 of prado-activerecord
+	 */
+	protected function getIsNullForBlankText($text, $column)
+	{
+		return trim($text) === '' && $column->getAllowNull() && $column->getPHPType() !== 'string';
 	}
 
 	protected function createMultiLineControl($container, $column, $record)

@@ -150,6 +150,7 @@ For each column the view creates a label, an input, and validators. The input bu
 | Integer type | `TDataTypeValidator` for integers |
 | Decimal type | `TDataTypeValidator` for floats; `TRangeValidator` when the column reports a maximum |
 | Column has a default value and the record value is `null` | input shows the default |
+| Text box left blank, column allows null, and its PHP type is not `string` (integer, decimal, boolean) | `NULL` is saved |
 
 Each item carries the CSS classes `edit-item`, `input_<index>`, and `property_<column>`, so a column can be hidden or restyled from a stylesheet.
 
@@ -284,7 +285,7 @@ The other builders compare the column type name reported by their database:
 | `TFirebirdScaffoldInput` | `BOOLEAN` | `SMALLINT`, `INTEGER`, `BIGINT` | `FLOAT`, `DOUBLE PRECISION`, `DECIMAL`, `NUMERIC`, `DECFLOAT(16)`, `DECFLOAT(34)` | `DATE` | `TIME`, `TIME WITH TIME ZONE` | `TIMESTAMP`, `TIMESTAMP WITH TIME ZONE` | `CHAR`, `VARCHAR`, `TEXT`, `BLOB` |
 | `TOracleScaffoldInput` | `BOOLEAN` | `INTEGER`, `INT`, `SMALLINT`; `NUMBER`, `DECIMAL`, `NUMERIC` with scale 0 | `NUMBER`, `DECIMAL`, `NUMERIC` with another or no scale; `FLOAT`, `BINARY_FLOAT`, `BINARY_DOUBLE`, `REAL`, `DOUBLE PRECISION` | | | `DATE`, `TIMESTAMP`, `TIMESTAMP WITH TIME ZONE`, `TIMESTAMP WITH LOCAL TIME ZONE` | `CLOB`, `NCLOB`, `LONG`, `BLOB` |
 
-Any other type gives the plain `TTextBox`. `TSqlSrvScaffoldInput` disables the text box for excluded columns and stores an empty text box as `NULL` when the column allows it.
+Any other type gives the plain `TTextBox`. `TSqlSrvScaffoldInput` disables the text box for excluded columns and stores a blank text box as `NULL` for any column that allows it, string columns included.
 
 The primary input of each item has the ID `scaffold_input` (`IScaffoldInput::DEFAULT_ID`) and the label's `ForControl` points at it.
 
