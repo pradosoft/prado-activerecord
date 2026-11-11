@@ -44,7 +44,7 @@ Run `composer fix` before `composer fulltest` to auto-apply style fixes; `fullte
 
 - Indentation: **tabs** (not spaces)
 - Line endings: Unix `\n`
-- PHP 8.1+ syntax; CI tests 8.2, 8.3, 8.4, 8.5
+- PHP 8.2+ syntax; CI tests 8.2, 8.3, 8.4, 8.5
 - PSR-12 enforced via php-cs-fixer
 - Uniform Access / Self Encapsulation: access own fields only through getters/setters, never `$this->_prop` directly in subclasses
 
@@ -136,7 +136,7 @@ The extension participates in the host PRADO application through `TActiveRecordC
 | `db-mysql` | `DbSpecific/Mysql`: the database cases over `prado_unitest` | Yes |
 | `db-pgsql`, `db-sqlsrv`, `db-firebird`, `db-oracle`, `db-ibm` | `DbSpecific/<Driver>`: the same cases over PostgreSQL, SQL Server, Firebird, Oracle, IBM DB2 | Yes, one CI job each |
 
-The cases are abstract classes in `DbSpecific/Cases/`; each driver directory subclasses every case and adds its `<Driver>ConnectionTrait` (setup helper, database, connection settings, unsupported features). A case calls `requireFeature()` to skip on a driver that lacks `composite_pk_in` (SQL Server, Firebird, DB2), `identity` (Oracle), or `null_parameters` (DB2).
+The cases are abstract classes in `DbSpecific/Cases/`; each driver directory subclasses every case and adds its `<Driver>ConnectionTrait` (setup helper, database, connection settings, unsupported features). A case calls `requireFeature()` to skip on a driver that lacks `composite_pk_in` (SQL Server, Firebird, DB2), `identity` (Oracle), or `null_parameters` (DB2). `merge_transaction` (SQL Server, Oracle, DB2, Firebird) marks a driver whose `insertOrIgnore()` and `upsert()` build a MERGE statement, which needs a transaction; those cases open one there.
 
 ### Adding a Test
 

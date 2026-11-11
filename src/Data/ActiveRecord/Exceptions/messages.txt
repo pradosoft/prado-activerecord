@@ -28,6 +28,7 @@ ar_save_invalid								= Active Record ''{0}'' cannot be saved after it has been
 ar_delete_invalid							= Active Record ''{0}'' must be retrieved or saved before it can be deleted, and cannot be deleted twice.
 ar_data_invalid								= $data in {0}::copyFrom($data) must be an object or an array.
 ar_belongs_to_multiple_result				= Expected one related record for a BELONGS_TO or HAS_ONE relationship but found several.
+ar_mn_relation_keys_required				= MANY_TO_MANY relationship to ''{0}'' through schemaless association table ''{1}'' requires both association key columns, declared as ''{1}.(sourceKey, foreignKey)''.
 scaffold_invalid_record_pk					= Unable to find a ''{0}'' record with primary key ''{1}''.
 scaffold_invalid_record_class				= Scaffold control ''{1}'' requires a RecordClass; ''{0}'' is not a record class.
 scaffold_unable_to_find_edit_view			= Unable to find the TScaffoldEditView with ID ''{0}''.

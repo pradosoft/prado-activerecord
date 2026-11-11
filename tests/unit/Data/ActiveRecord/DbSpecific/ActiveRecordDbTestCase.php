@@ -53,6 +53,7 @@ abstract class ActiveRecordDbTestCase extends \PHPUnit\Framework\TestCase
 	 * - `composite_pk_in`: the `(a, b) IN ((1, 2), (3, 4))` form the gateway builds for a composite primary key
 	 * - `identity`: an auto-increment primary key that the metadata reports and the gateway reads back after an insert
 	 * - `null_parameters`: a NULL bound as PDO::PARAM_NULL
+	 * - `merge_transaction`: insertOrIgnore() and upsert() outside a transaction; the driver builds a MERGE statement, which needs one
 	 * @return string[]
 	 */
 	protected function getUnsupportedFeatures(): array

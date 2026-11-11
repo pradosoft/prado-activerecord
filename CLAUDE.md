@@ -97,7 +97,7 @@ tests/
     ├── DbSpecific/ActiveRecordDbTestCase.php — base of the database cases: connection per class, finder rebinding, feature gates
     ├── DbSpecific/Cases/        — the database cases, abstract, one per concern (finders, criteria, counts, ...)
     ├── DbSpecific/<Driver>/     — one directory per driver: <Driver>ConnectionTrait plus a thin subclass of every case
-    │                              Mysql, Sqlite, Pgsql, Sqlsrv, Firebird, Oracle, Ibm; Sqlite also holds the relation tests
+    │                              Mysql, Sqlite, Pgsql, SqlSrv, Firebird, Oracle, Ibm; Sqlite also holds the relation tests
     ├── sqlite/                  — fk_tests.db, test1.sqlite, blog.db
     └── scripts/<driver>/database.sql — the same schema per driver; CI loads it through .github/scripts/setup-<driver>.sh
 tests/unit/Shell/Actions/TActiveRecordActionTest.php — unit suite: prado-cli flag parsing over an in-memory SQLite
@@ -142,7 +142,7 @@ The bootstrap (`tests/test_tools/phpunit_bootstrap.php`) loads the Composer auto
 ### Test Suite Boundaries
 
 - **`unit` suite**: pure unit tests only (no database). Everything under `tests/unit/Data/ActiveRecord` except `DbSpecific/`, plus `tests/unit/Shell`.
-- **Database cases**: `DbSpecific/Cases/*TestCase.php` are abstract and hold the tests once. `DbSpecific/<Driver>/<Driver><Case>Test.php` is a thin subclass that adds `<Driver>ConnectionTrait` (MySQL keeps the original file names). The trait names the `PradoUnit::setup*Connection()` helper, the database, the connection settings, and `getUnsupportedFeatures()`; a case calls `requireFeature()` to skip on a driver that lacks `composite_pk_in` (SQL Server, Firebird, DB2), `identity` (Oracle reports no identity column), or `null_parameters` (DB2). The fixture records carry a `$COLUMN_MAPPING` from upper case names, because Firebird, Oracle, and DB2 return the unquoted identifiers in upper case. `ActiveRecordDbTestCase` opens one connection per class through `PradoUnitActiveRecordConnectionTrait` (the package's wrapper of the framework's `PradoUnitDataConnectionTrait`, which sets the record manager's connection), which fails the first test and skips the rest when the server or a table is missing, and rebinds the fixture finders to it.
+- **Database cases**: `DbSpecific/Cases/*TestCase.php` are abstract and hold the tests once. `DbSpecific/<Driver>/<Driver><Case>Test.php` is a thin subclass that adds `<Driver>ConnectionTrait` (MySQL keeps the original file names). The trait names the `PradoUnit::setup*Connection()` helper, the database, the connection settings, and `getUnsupportedFeatures()`; a case calls `requireFeature()` to skip on a driver that lacks `composite_pk_in` (SQL Server, Firebird, DB2), `identity` (Oracle reports no identity column), or `null_parameters` (DB2). `merge_transaction` (SQL Server, Oracle, DB2, Firebird) marks a driver whose `insertOrIgnore()` and `upsert()` build a MERGE statement, which needs a transaction; those cases open one there. The fixture records carry a `$COLUMN_MAPPING` from upper case names, because Firebird, Oracle, and DB2 return the unquoted identifiers in upper case. `ActiveRecordDbTestCase` opens one connection per class through `PradoUnitActiveRecordConnectionTrait` (the package's wrapper of the framework's `PradoUnitDataConnectionTrait`, which sets the record manager's connection), which fails the first test and skips the rest when the server or a table is missing, and rebinds the fixture finders to it.
 - **`db-sqlite`**: `DbSpecific/Sqlite`. `SqliteTestDatabase` builds the database from `scripts/sqlite/database.sql` in the system temporary directory; the relation tests read the committed files in `tests/unit/Data/ActiveRecord/sqlite/`. Needs `pdo_sqlite` and nothing else.
 - **`db-mysql`**: `DbSpecific/Mysql`. Needs a MySQL server with the `prado_unitest` database, user `prado_unitest` / `prado_unitest`, loaded from `scripts/mysql/database.sql`.
 - **`db-pgsql`, `db-sqlsrv`, `db-firebird`, `db-oracle`, `db-ibm`**: the same cases over the other servers, with the credentials the framework's `PradoUnit` helpers use. Each has a CI job; the PostgreSQL database is created with the C locale because the ordering tests expect a binary sort.
@@ -164,7 +164,7 @@ The bootstrap (`tests/test_tools/phpunit_bootstrap.php`) loads the Composer auto
 
 - Indentation: **tabs** (not spaces)
 - Line endings: Unix (`\n`)
-- PHP minimum: **8.1** (CI tests 8.2, 8.3, 8.4, 8.5; the `pradosoft/prado` dev dependency requires 8.2)
+- PHP minimum: **8.2**, as PRADO 4.4 requires (CI tests 8.2, 8.3, 8.4, 8.5)
 - PSR-12 enforced via php-cs-fixer
 - Use `?` for single nullable types and in doc blocks
 

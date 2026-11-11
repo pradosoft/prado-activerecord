@@ -116,9 +116,29 @@ class GwWrappedConnection implements IDataConnection
 		return $this->_inner->getCurrentTransaction();
 	}
 
+	public function getLastTransaction(): ?\Prado\Data\IDataTransaction
+	{
+		return $this->_inner->getLastTransaction();
+	}
+
+	public function commit(): ?bool
+	{
+		return $this->_inner->commit();
+	}
+
+	public function rollback(): ?bool
+	{
+		return $this->_inner->rollback();
+	}
+
 	public function getLastInsertID($sequenceName = '')
 	{
 		return $this->_inner->getLastInsertID($sequenceName);
+	}
+
+	public function getDbMetaData()
+	{
+		return $this->_inner->getDbMetaData();
 	}
 
 	public function getConnectionString()
@@ -364,18 +384,19 @@ class GatewaySqliteTest extends \PHPUnit\Framework\TestCase
 	{
 		$connection = $this->database('x');
 		$one = (new GwItem([], $connection))->findByPk(1);
-		$copy = new GwItem(['id' => '1', 'name' => 'changed'], $connection);
+		$copy = new GwItem(['id' => 1, 'name' => 'changed'], $connection);
 		$this->assertTrue($one->equals($copy));
 		$this->assertTrue($one->equals($copy, true));
-		$copy->id = 1;
+		$copy->id = '1';
+		$this->assertTrue($one->equals($copy));
 		$this->assertFalse($one->equals($copy, true));
 	}
 
 	public function testToArrayAndToJson()
 	{
 		$record = (new GwItem([], $this->database('json')))->findByPk(1);
-		$this->assertSame(['id' => '1', 'name' => 'json', 'note' => null], $record->toArray());
-		$this->assertSame('{"id":"1","name":"json","note":null}', $record->toJSON());
+		$this->assertSame(['id' => 1, 'name' => 'json', 'note' => null], $record->toArray());
+		$this->assertSame('{"id":1,"name":"json","note":null}', $record->toJSON());
 	}
 
 	public function testExcludedColumn_isNotWritten()

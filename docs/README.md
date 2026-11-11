@@ -11,7 +11,7 @@ Active Record wraps one row of a database table or view in a PHP object. A recor
 | [Migration](migration.md) | Moving from the framework-bundled Active Record to this package |
 | [Prado Integration](integration.md) | Registering `TActiveRecordConfig` as an application module, connection and cache settings, multiple connections, manager and gateway events, binding records to template controls |
 | [Quick Start](quickstart.md) | Minimal working example: install, module, table, record class, find, save, delete |
-| [Record Classes](records.md) | `TABLE` and `table()`, columns, `finder()`, primary keys, record state, `copyFrom()`, `toArray()`, serialization, `InvalidFinderResult`, read-only records |
+| [Record Classes](records.md) | `TABLE` and `table()`, columns, insert or ignore and upsert, `finder()`, primary keys, record state, `copyFrom()`, `toArray()`, serialization, `InvalidFinderResult`, read-only records |
 | [Finders](finders.md) | `find`, `findAll`, `findByPk`, `findAllByPks`, `findBySql`, `count`, `deleteAll`, dynamic finders, parameter binding, `TActiveRecordCriteria` |
 | [Relations](relations.md) | `$RELATIONS`, the four relation types, foreign key detection, `with<Relation>()`, lazy loading, saving related records |
 | [Events](events.md) | `OnInsert`, `OnUpdate`, `OnDelete`, `OnCreateCommand`, `OnExecuteCommand`, and their order during `save()` and `delete()` |
@@ -37,15 +37,18 @@ Active Record wraps one row of a database table or view in a PHP object. A recor
 | `findAllBy<Columns>(...)` | Array of records (dynamic finder) |
 | `with<Relation>(...)` | Relation handler; call a finder method on it to load related records |
 | `save()` | `true` when the row is inserted or updated, `false` otherwise |
+| `insertOrIgnore()` | Last insert id or `true` when the row is inserted; `false` when it conflicts |
+| `upsert($updateData = null, $conflictColumns = null)` | Last insert id or `true` when the row is inserted or updated, `false` otherwise |
 | `delete()` | `true` when the row is deleted, `false` otherwise |
 | `deleteByPk($keys)`, `deleteAllByPks($keys)` | `int` number of rows deleted |
 | `deleteAll($criteria = null, ...$params)` | `int` number of rows deleted |
 | `deleteBy<Columns>(...)`, `deleteAllBy<Columns>(...)` | `int` number of rows deleted (dynamic finder) |
 | `copyFrom($data)` | Nothing; copies an array or object into the record |
 | `toArray()`, `toJSON()` | Column values as an array, or as a JSON string |
+| `getRecordColumnValues()` | Public non-relation property values by property name; the values a schemaless table stores |
 | `equals($record, $strict = false)` | `true` when the primary key values match |
 | `getRecordTableInfo()` | `TDbTableInfo` for the record's table |
-| `getDbConnection()`, `setDbConnection($conn)` | The record's `TDbConnection` |
+| `getDbConnection()`, `setDbConnection($conn)` | The record's connection; without its own, the manager's current connection |
 
 ## Relation Type Constants
 

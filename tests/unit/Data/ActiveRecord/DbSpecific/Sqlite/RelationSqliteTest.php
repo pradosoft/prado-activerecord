@@ -233,13 +233,20 @@ class RelationSqliteTest extends \PHPUnit\Framework\TestCase
 
 	public function testBelongsTo_multipleMatchesThrow()
 	{
-		RelSqliteRecord::connection()->getPdoInstance()->exec(
-			"CREATE TABLE rel_cities (id integer PRIMARY KEY, team_name varchar(20));
+		// The reference to a non-unique column is the point of the test; a connection
+		// that enforces foreign keys rejects it, so enforcement is off while it is built.
+		$pdo = RelSqliteRecord::connection()->getPdoInstance();
+		$foreignKeys = (int) $pdo->query('PRAGMA foreign_keys')->fetchColumn();
+		$pdo->exec(
+			"PRAGMA foreign_keys = OFF;
+			CREATE TABLE rel_cities (id integer PRIMARY KEY, team_name varchar(20));
 			INSERT INTO rel_cities VALUES (1, 'Team a'), (2, 'Team a');
 			CREATE TABLE rel_fans (id integer PRIMARY KEY, team_name varchar(20) REFERENCES rel_cities (team_name));
 			INSERT INTO rel_fans VALUES (1, 'Team a');"
 		);
-		$context = new TActiveRecordRelationContext(RelFan::finder()->findByPk(1), 'city', [TActiveRecord::BELONGS_TO, RelCity::class]);
+		$fan = RelFan::finder()->findByPk(1);
+		$pdo->exec('PRAGMA foreign_keys = ' . $foreignKeys);
+		$context = new TActiveRecordRelationContext($fan, 'city', [TActiveRecord::BELONGS_TO, RelCity::class]);
 		$this->expectException(TActiveRecordException::class);
 		$context->getRelationHandler()->fetchResultsInto($context->getSourceRecord());
 	}

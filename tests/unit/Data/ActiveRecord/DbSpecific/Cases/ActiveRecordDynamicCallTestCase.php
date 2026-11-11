@@ -38,6 +38,7 @@ abstract class ActiveRecordDynamicCallTestCase extends ActiveRecordDbTestCase
 
 	public function test_dynamic_call_extras_parameters_ok()
 	{
+		$this->requireFeature('extra_parameter_error', 'The driver ignores a bound parameter the statement does not use.');
 		$finder = DepartmentRecord::finder();
 		try {
 			$finder->findByNameAndActive('Marketing', true, true);

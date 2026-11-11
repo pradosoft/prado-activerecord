@@ -110,6 +110,38 @@ class TActiveRecordTest extends \PHPUnit\Framework\TestCase
 		$this->assertSame('seven', $record->name);
 	}
 
+	public function testCopyFrom_record_leavesStateAndConnection()
+	{
+		$connection = new TDbConnection('sqlite::memory:');
+		$source = TActiveRecord::createRecord(LifecycleItemRecord::class, ['id' => 8, 'name' => 'eight']);
+		$source->setDbConnection($connection);
+		$this->assertSame(TActiveRecord::STATE_LOADED, PradoUnit::getProp($source, '_recordState'));
+
+		$record = new LifecycleItemRecord();
+		$record->copyFrom($source);
+
+		$this->assertSame(8, $record->id);
+		$this->assertSame('eight', $record->name);
+		$this->assertSame(TActiveRecord::STATE_NEW, PradoUnit::getProp($record, '_recordState'));
+		$this->assertNull(PradoUnit::getProp($record, '_connection'));
+	}
+
+	public function testCopyFrom_object_skipsNonPublicAndUninitializedProperties()
+	{
+		$data = new class () {
+			public $id = 9;
+			public int $owner_id;
+			public static $name = 'static';
+			protected $name_protected = 'protected';
+			private $name_private = 'private';
+		};
+		$record = new LifecycleItemRecord();
+		$record->copyFrom($data);
+		$this->assertSame(9, $record->id);
+		$this->assertNull($record->owner_id);
+		$this->assertNull($record->name);
+	}
+
 	public function testCopyFrom_scalar_throws()
 	{
 		$record = new LifecycleItemRecord();
