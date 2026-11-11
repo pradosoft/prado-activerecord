@@ -2,8 +2,10 @@
 
 namespace Prado\Test\Unit\Data\ActiveRecord\DbSpecific\Sqlite;
 
+use Prado\Data\ActiveRecord\Relations\TActiveRecordHasManyAssociation;
 use Prado\Data\ActiveRecord\Relations\TActiveRecordRelationContext;
 use Prado\Data\ActiveRecord\TActiveRecord;
+use Prado\Data\ActiveRecord\TActiveRecordCriteria;
 use Prado\Data\TDbConnection;
 
 /**
@@ -101,6 +103,15 @@ class SelfItemTargetFirst extends SelfManyToManySqliteRecord
 	}
 }
 
+/** Loads MANY_TO_MANY records with the two queries a command builder without joins uses. */
+class SelfQueriesAssociation extends TActiveRecordHasManyAssociation
+{
+	protected function fetchForeignObjects(&$results, $foreignKeys, $indexValues, $sourceKeys)
+	{
+		$this->fetchForeignObjectsByQueries($results, $foreignKeys, $indexValues, $sourceKeys);
+	}
+}
+
 /**
  * Regression test for a self-referencing MANY_TO_MANY relation: the association
  * table holds two foreign keys to the same table, declared in either order.
@@ -170,6 +181,26 @@ class SelfManyToManyTest extends \PHPUnit\Framework\TestCase
 		$this->assertSame([1], self::ids($items[1]->sources));
 		$this->assertSame([1], self::ids($items[2]->targets));
 		$this->assertSame([], self::ids($items[2]->sources));
+	}
+
+	/**
+	 * The two queries joined in PHP fill the named association column on the related
+	 * records, as the INNER JOIN does.
+	 * @dataProvider recordClasses
+	 * @param string $class
+	 * @param string $link
+	 */
+	public function testNamedColumnByQueries(string $class, string $link)
+	{
+		foreach (['targets' => [2, 'target_id'], 'sources' => [3, 'source_id']] as $property => [$id, $column]) {
+			$first = $class::finder()->findByPk(1);
+			$handler = new SelfQueriesAssociation(new TActiveRecordRelationContext($first, $property, $class::$RELATIONS[$property]), new TActiveRecordCriteria());
+			$handler->fetchResultsInto($first);
+			$this->assertSame([$id], self::ids($first->{$property}), $property);
+			$this->assertSame($id, (int) $first->{$property}[0]->{$column}, $property);
+			$joined = $class::finder()->{'with' . $property}()->findByPk(1);
+			$this->assertSame($id, (int) $joined->{$property}[0]->{$column}, $property);
+		}
 	}
 
 	/**
