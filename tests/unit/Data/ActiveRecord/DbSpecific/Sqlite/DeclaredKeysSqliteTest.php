@@ -25,6 +25,7 @@ abstract class DeclaredKeysSqliteRecord extends TActiveRecord
 		CREATE TABLE dk_post (id integer PRIMARY KEY, author_id integer, title varchar(20));
 		CREATE TABLE dk_tag (id integer PRIMARY KEY, name varchar(20));
 		CREATE TABLE dk_post_tag (post_id integer NOT NULL, tag_id integer NOT NULL);
+		CREATE TABLE dk_pair (a integer NOT NULL, b integer NOT NULL, PRIMARY KEY (a, b));
 		INSERT INTO dk_author VALUES (1, 'ann');
 		INSERT INTO dk_author VALUES (2, 'ben');
 		INSERT INTO dk_post VALUES (1, 1, 'first');
@@ -88,11 +89,15 @@ class DkPost extends DeclaredKeysSqliteRecord
 	public $author;
 	public $tags = [];
 	public $undeclared;
+	public $mismatched;
+	public $pairs = [];
 
 	public static $RELATIONS = [
 		'author' => [self::BELONGS_TO, DkAuthor::class, 'author_id'],
 		'tags' => [self::MANY_TO_MANY, DkTag::class, 'dk_post_tag.(post_id, tag_id)'],
 		'undeclared' => [self::BELONGS_TO, DkAuthor::class],
+		'mismatched' => [self::BELONGS_TO, DkAuthor::class, 'author_id, title'],
+		'pairs' => [self::MANY_TO_MANY, DkPair::class, 'dk_post_tag.(post_id, tag_id)'],
 	];
 
 	public static function finder($class = __CLASS__)
@@ -107,6 +112,20 @@ class DkTag extends DeclaredKeysSqliteRecord
 
 	public $id;
 	public $name;
+
+	public static function finder($class = __CLASS__)
+	{
+		return parent::finder($class);
+	}
+}
+
+/** A record with a composite primary key, which named association columns cannot reference. */
+class DkPair extends DeclaredKeysSqliteRecord
+{
+	public const TABLE = 'dk_pair';
+
+	public $a;
+	public $b;
 
 	public static function finder($class = __CLASS__)
 	{
@@ -200,6 +219,35 @@ class DeclaredKeysSqliteTest extends \PHPUnit\Framework\TestCase
 	{
 		$this->expectException(TActiveRecordException::class);
 		DkPost::finder()->withUndeclared()->findByPk(1);
+	}
+
+	public function testNamedColumnCountMustMatchThePrimaryKey()
+	{
+		try {
+			DkPost::finder()->withMismatched()->findByPk(1);
+			$this->fail('Two named columns mapped onto a one-column primary key.');
+		} catch (TActiveRecordException $e) {
+			$this->assertSame('ar_relations_missing_fk', $e->getErrorCode());
+		}
+	}
+
+	public function testNamedAssociationColumnsCannotReferenceACompositePrimaryKey()
+	{
+		try {
+			DkPost::finder()->withPairs()->findByPk(1);
+			$this->fail('A named association column mapped onto a composite primary key.');
+		} catch (TActiveRecordException $e) {
+			$this->assertSame('ar_relations_missing_fk', $e->getErrorCode());
+		}
+	}
+
+	public function testManyToManyByQueriesSkipsAssociationRowsWithoutForeignRecord()
+	{
+		DkPost::connection()->getPdoInstance()->exec('INSERT INTO dk_post_tag VALUES (2, 99)');
+		$post = DkPost::finder()->findByPk(2);
+		$handler = new DkQueriesAssociation(new TActiveRecordRelationContext($post, 'tags', DkPost::$RELATIONS['tags']), new TActiveRecordCriteria());
+		$handler->fetchResultsInto($post);
+		$this->assertSame([], $post->tags);
 	}
 
 	public function testManyToManyByQueries()

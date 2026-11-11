@@ -8,6 +8,7 @@ use Prado\Data\ActiveRecord\TActiveRecordChangeEventParameter;
 use Prado\Data\ActiveRecord\TActiveRecordGateway;
 use Prado\Data\ActiveRecord\TActiveRecordInvalidFinderResult;
 use Prado\Data\ActiveRecord\TActiveRecordManager;
+use Prado\Data\DataGateway\IDataCriteria;
 use Prado\Data\TDbConnection;
 use Prado\Exceptions\TInvalidDataValueException;
 use Prado\Test\Unit\PradoUnit;
@@ -66,6 +67,67 @@ class LifecycleRecordingGateway extends TActiveRecordGateway
 	{
 		$this->calls[] = ['deleteRecordsByPk', $keys];
 		return count($keys);
+	}
+
+	public function findRecordsByCriteria(TActiveRecord $record, $criteria, $iterator = false)
+	{
+		$this->calls[] = ['findRecordsByCriteria', $criteria];
+		return [];
+	}
+
+	public function countRecords(TActiveRecord $record, $criteria)
+	{
+		$this->calls[] = ['countRecords', $criteria];
+		return 0;
+	}
+
+	public function deleteRecordsByCriteria(TActiveRecord $record, $criteria)
+	{
+		$this->calls[] = ['deleteRecordsByCriteria', $criteria];
+		return 0;
+	}
+}
+
+/**
+ * A criteria of a store that is not SQL, such as a document store's filter. It is
+ * no TSqlCriteria; setLimit() is there because find() limits its criteria to one row.
+ */
+class LifecycleDocumentCriteria implements IDataCriteria
+{
+	public $limit;
+
+	public function __construct(public array $filter)
+	{
+	}
+
+	public function setLimit($value)
+	{
+		$this->limit = $value;
+	}
+
+	public function getParameters()
+	{
+		return [];
+	}
+
+	public function getOrdersBy()
+	{
+		return [];
+	}
+
+	public function getLimit()
+	{
+		return $this->limit;
+	}
+
+	public function getOffset()
+	{
+		return null;
+	}
+
+	public function getSelect()
+	{
+		return '*';
 	}
 }
 
@@ -228,6 +290,41 @@ class TActiveRecordTest extends \PHPUnit\Framework\TestCase
 		$this->assertSame('id = ?', $copy->getCondition());
 		$copy->setLimit(1);
 		$this->assertNull($criteria->getLimit());
+	}
+
+	public function testGetRecordCriteria_nonSqlCriteriaIsCopiedNotReplaced()
+	{
+		$record = new LifecycleItemRecord();
+		$criteria = new LifecycleDocumentCriteria(['status' => 'old']);
+		$copy = $record->criteriaFor($criteria);
+		$this->assertInstanceOf(LifecycleDocumentCriteria::class, $copy);
+		$this->assertNotSame($criteria, $copy);
+		$this->assertSame(['status' => 'old'], $copy->filter);
+	}
+
+	public function testFinders_passNonSqlCriteriaToTheGateway()
+	{
+		$manager = new TActiveRecordManager();
+		$manager->setGatewayClass(LifecycleRecordingGateway::class);
+		TActiveRecordManager::getInstance($manager);
+		$record = new LifecycleItemRecord();
+		$criteria = new LifecycleDocumentCriteria(['status' => 'old']);
+
+		$this->assertSame(0, $record->deleteAll($criteria));
+		$this->assertSame(0, $record->count($criteria));
+		$this->assertSame([], $record->findAll($criteria));
+		$this->assertNull($record->find($criteria));
+
+		$calls = $manager->getRecordGateway()->calls;
+		$this->assertSame(['deleteRecordsByCriteria', 'countRecords', 'findRecordsByCriteria', 'findRecordsByCriteria'], array_column($calls, 0));
+		foreach ($calls as [$method, $passed]) {
+			// A match-all TActiveRecordCriteria in place of the filter would make deleteAll() delete every record.
+			$this->assertInstanceOf(LifecycleDocumentCriteria::class, $passed, $method);
+			$this->assertNotSame($criteria, $passed, $method);
+			$this->assertSame(['status' => 'old'], $passed->filter, $method);
+		}
+		$this->assertSame(1, $calls[3][1]->getLimit());
+		$this->assertNull($criteria->getLimit(), 'find() limits a copy');
 	}
 
 	public function testGetRecordCriteria_stringUsesArgsWhenParametersAreNotAnArray()
