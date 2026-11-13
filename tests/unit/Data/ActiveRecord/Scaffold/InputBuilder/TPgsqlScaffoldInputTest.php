@@ -57,6 +57,9 @@ class TPgsqlScaffoldInputTest extends ScaffoldInputTestCase
 			'timestamp' => ['timestamp without time zone', '2001-02-03 04:05:06', '2001-02-03 04:05:06'],
 			'text' => ['text', 'abc', 'abc'],
 			'integer' => ['integer', '12', '12'],
+			'empty integer' => ['integer', '', null],
+			'empty numeric' => ['numeric', '', null],
+			'empty character varying' => ['character varying', '', ''],
 		];
 	}
 

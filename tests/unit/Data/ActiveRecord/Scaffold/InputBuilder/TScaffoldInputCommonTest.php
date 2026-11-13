@@ -219,6 +219,39 @@ class TScaffoldInputCommonTest extends ScaffoldInputTestCase
 		$this->assertSame('', $this->load($builder, $item, $column, $record));
 	}
 
+	public static function blankTextProvider(): array
+	{
+		return [
+			'nullable int, empty' => ['int', true, '', null],
+			'nullable int, blank' => ['int', true, '  ', null],
+			'nullable int, number' => ['int', true, '12', '12'],
+			'nullable decimal, empty' => ['decimal', true, '', null],
+			'nullable tinyint(1), empty' => ['tinyint', true, '', null, ['ColumnSize' => 1]],
+			'not null int, empty' => ['int', false, '', ''],
+			'nullable varchar, empty' => ['varchar', true, '', ''],
+			'nullable varchar, blank' => ['varchar', true, '  ', '  '],
+		];
+	}
+
+	/**
+	 * @dataProvider blankTextProvider
+	 * @param string $type
+	 * @param bool $allowNull
+	 * @param string $text
+	 * @param ?string $expected
+	 * @param array $info
+	 */
+	public function testDefaultControlValue_blankTextIsNullForNullableNonStringColumn(string $type, bool $allowNull, string $text, ?string $expected, array $info = [])
+	{
+		$column = $this->column($type, ['AllowNull' => $allowNull] + $info);
+		$builder = new CommonScaffoldInputHarness('Default');
+		$record = $this->newRecord(['value' => '7']);
+		$item = $this->build($builder, $column, $record);
+
+		$this->input($item)->setText($text);
+		$this->assertSame($expected, $this->load($builder, $item, $column, $record));
+	}
+
 	public function testMultiLineControl()
 	{
 		$column = $this->column('text', ['AllowNull' => false]);
